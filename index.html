@@ -662,19 +662,21 @@ footer a{color:var(--i80)}
       <button class="btn icon" type="button" id="bClose" aria-label="Close builder"><svg class="ic"><use href="#i-x"/></svg></button>
     </div>
     <div class="body">
-      <div class="field span2"><label class="lbl" for="bTemplate">Commercial use-case starter <span class="hint">optional — fills style, shots, audio &amp; aspect</span></label>
+      <div class="field span2"><label class="lbl" for="bTemplate">Commercial use-case starter <span class="hint">from MiniMax-H3 guide (3.1) — shows expected demo video</span></label>
         <select id="bTemplate">
           <option value="">Custom / blank</option>
-          <option value="ecom_ad">E-Commerce · Luxury Product Reveal (9:16)</option>
-          <option value="brand_spot">Advertising · Multi-Shot Brand Commercial (16:9)</option>
-          <option value="billboard">Marketing · 21:9 Digital Billboard &amp; Brand Intro</option>
-          <option value="viral_transfer">Social · Viral Ad Rhythm Transfer (&lt;Video&gt; + &lt;Picture&gt;)</option>
-          <option value="packaging">Packaging · Label &amp; Material Mockup (1:1)</option>
-          <option value="micro_drama">Short Drama · Vertical Two-Speaker Scene (9:16)</option>
-          <option value="anime_action">Anime · Stylized Cel-Shaded Action (16:9)</option>
-          <option value="music_video">Music Video · Beat-Synced Performance &amp; Lyrics (16:9)</option>
-          <option value="gaming_hud">Gaming · Cinematics &amp; Interactive HUD (16:9)</option>
-          <option value="saas_ui">SaaS / UI·UX · App Motion &amp; Product Demo (16:9)</option>
+          <option value="ecom_ad">3.1.6 · Product &amp; E-Commerce (Futuristic Eyewear, 9:16)</option>
+          <option value="food_ad">3.1.6 · Food &amp; Beverage Commercial (16:9)</option>
+          <option value="brand_spot">3.1.1 · Brand Film (Vintage Binocular, 16:9)</option>
+          <option value="space_teaser">3.1.1 · Epic Space Opera Teaser (16:9)</option>
+          <option value="motion_gfx">3.1.3 · Motion Graphics &amp; Tech Brand Film (16:9)</option>
+          <option value="ar_world">3.1.4 · AR Creative World Editing (16:9)</option>
+          <option value="micro_drama">3.1.5 · AI-Native Short Drama (Vertical 9:16)</option>
+          <option value="saas_ui">3.1.7 · Product Landing Page UI/UX Demo (16:9)</option>
+          <option value="robotics">3.1.8 · Hardware &amp; Robotic Arm Demo (16:9)</option>
+          <option value="claymation">3.1.9 · Claymation Action (16:9)</option>
+          <option value="anime_action">3.1.9 · Anime-Inspired 2D Cel Animation (16:9)</option>
+          <option value="music_video">3.1.2 · Cyber-Grunge Rap Music Video (16:9)</option>
         </select>
         <div class="hint" id="bTemplateHint"></div></div>
 
@@ -2297,138 +2299,217 @@ function preview() {
       : `${prevLen} characters`;
 }
 
+const OFFICIAL_STYLE_DEMOS = {
+  'Live-action, cinematic': {
+    title: '3.1.1.2 Epic Space Opera Teaser',
+    url: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/6de2e13b-944f-423a-9190-e12b5cdb71b9/6de2e13b-944f-423a-9190-e12b5cdb71b9.mp4?table=block&id=f72d99c3-d331-8236-8fa0-8161374ae042&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=pp6cj22YLUIPRu4J0x-S7CHcxBKxm0hzntCwOPtDpsc'
+  },
+  'Live-action, documentary': {
+    title: '3.1.8.1 Robotic Arm Demonstration',
+    url: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/67830897-e7f7-4fb8-ba7a-aacad065126a/Hailuo_Video_%E6%9C%BA%E5%99%A8%E8%87%82%E4%B8%8B%E9%99%8D%EF%BC%8C%E6%8A%93%E8%B5%B7%E7%BA%A2%E8%89%B2%E6%96%B9%E5%9D%97%EF%BC%8C%E5%90%91%E5%89%8D%E7%A7%BB%E5%8A%A8%E4%B8%80%E6%AE%B5%E8%B7%9D%E7%A6%BB%E5%90%8E%E6%94%BE%E4%B8%8B_539561186482315272_(1).mp4?table=block&id=3b9d99c3-d331-809a-a12c-d813b4bfa3e1&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=AeLBJjkGb7TE8H9YWDG5hf7q-zesRSzuWy12U19zV8g'
+  },
+  'Live-action, handheld, natural light': {
+    title: '3.1.4.1 AR World Editing',
+    url: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/1d306ad9-6179-4f00-901f-a1174b548594/IMG_9503_(1).mov?table=block&id=3b9d99c3-d331-80c5-93b5-d7763454c90a&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=IBb-jW4ZJHgAJ8QZ_8VSZO7Ghp6tm01MSK7ECSo9BZo'
+  },
+  '3D CG, cinematic': {
+    title: '3.1.3.1 Abstract Technology Brand Film',
+    url: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/dff5e039-9a73-4109-b713-070c0f9ff23c/MG%E5%8A%A8%E7%94%BB1.mp4?table=block&id=3b9d99c3-d331-802d-bde0-d87713477f5d&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=aUa7epmxS-h1Fv23KkgbNxNWUX-F_OG9Xjq8sI4cr4o'
+  },
+  '2D-animated, cel-shaded': {
+    title: '3.1.9.7 Anime-Inspired Style',
+    url: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/3f0d8305-e91c-4be8-ad1a-5e52c55f5fdf/%E6%B5%B7%E8%9E%BA_%E8%A7%86%E9%A2%91_%E9%A3%8E%E6%A0%BC%E8%AE%BE%E5%AE%9A%EF%BC%9A_%E7%BA%AF%E4%BA%8C%E7%BB%B4%E8%B5%9B_540976941206548484_(1).mp4?table=block&id=3b9d99c3-d331-80e3-af80-dd890ad0529a&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=MHVZKByrXITb-WWMkBAElcMWIwflBg81prnC6btj2sg'
+  },
+  'Claymation': {
+    title: '3.1.9.1 Claymation Lava Canyon Leap',
+    url: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/0968eff3-b0e8-4c3d-a00f-0cd61a4d8d1e/0968eff3-b0e8-4c3d-a00f-0cd61a4d8d1e.mp4?table=block&id=124d99c3-d331-823c-9d90-815fcbd316b1&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=HDkn3wmp5KnE6sCS5DQPQ7VR5kqFLTJf52ZVZlZI_rQ'
+  },
+  'Vintage film, 16mm grain': {
+    title: '3.1.1.1 Vintage Binocular Brand Film',
+    url: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/750d6f42-9487-458f-8b63-05e9fdc77cee/750d6f42-9487-458f-8b63-05e9fdc77cee.mp4?table=block&id=61ad99c3-d331-8397-ab02-01bf94fe3a1b&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=SJIKqaF0UtrsOUmWOPt6dzbrXhmcPG5ukrzdeHPN5fY'
+  }
+};
+
 const COMMERCIAL_PRESETS = {
   ecom_ad: {
     aspect: '9:16', intent: 'product', style: 'Live-action, cinematic',
     camType: 'arcs around the subject', camAmp: 'with small amplitude', camSpd: 'at slow speed',
-    scene: 'A frosted amber glass skincare serum bottle resting on wet black basalt stone under crisp studio rim lighting, surrounded by fresh water droplets',
+    scene: 'Seamless minimal white cyclorama studio with elevated fashion editorial lighting and futuristic wraparound luxury eyewear',
     shots: [
-      { text: 'Condensation beads shimmer on the glass as a gentle mist drifts past the bottle.' },
-      { text: 'A hand enters frame, lifts the dropper cleanly, and a golden serum drop catches the key light.' }
+      { text: 'Two fashion models pose with cool runway attitude wearing mirrored wraparound cat-eye sunglasses.' },
+      { text: 'Sharp rapid cut to a close-up capturing specular lens reflections and streamlined metallic temples.' }
     ],
-    text: 'PURE BOTANICAL SERUM',
-    sound: 'Crisp glass clink, soft mist spray, delicate liquid droplet splash.',
-    music: 'Minimalist luxury electronic pulse with warm Rhodes chords and subtle sub-bass.',
-    hint: 'Tip: Attach 2–4 clean product photos (<Picture 1>..) to lock exact bottle & label design.'
+    text: 'AVANT EYEWEAR',
+    sound: 'Crisp studio shutter clicks, subtle fabric rustle, sleek air whoosh on cuts.',
+    music: 'Minimalist luxury electronic pulse with tight bass and high-fashion synth stabs.',
+    hint: 'Tip: Attach 1–3 product/model photos (<Picture 1>..) for exact eyewear & look lock.',
+    demoTitle: '3.1.6.1 Futuristic Eyewear Campaign',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/af782285-9fa2-4d4c-a405-7018664d9f49/af782285-9fa2-4d4c-a405-7018664d9f49.mp4?table=block&id=4d7d99c3-d331-82a0-ae8b-01b09e624649&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=utChIFWOmBLtRuVQawFb4W_cgnr6aw_f6K0tTfeAKTE'
+  },
+  food_ad: {
+    aspect: '16:9', intent: 'scene', style: 'Live-action, cinematic',
+    camType: 'arcs around the subject', camAmp: 'with small amplitude', camSpd: 'at slow speed',
+    scene: 'Pure black studio backdrop with dramatic overhead key light illuminating a glossy, golden roasted Peking duck rotating slowly',
+    shots: [
+      { text: 'Ultra-slow rotating close-up glides over crisp lacquered skin as delicate steam rises in dark negative space.' },
+      { text: 'Clean oversized sans-serif product callouts fade in beside the dish.' }
+    ],
+    text: 'CRAFTED ROAST',
+    sound: 'Subtle crisp skin crackle, delicate rising steam hiss.',
+    music: 'Atmospheric minimalist electronic soundtrack with warm low synth swells.',
+    hint: 'Official 3.1.6.3 Food & Beverage product launch style.',
+    demoTitle: '3.1.6.3 Food & Beverage Commercials',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/8be249c8-107d-4dfc-9468-5662af25edb8/%E6%B5%B7%E8%9E%BA_%E8%A7%86%E9%A2%91_15_%E7%A7%92%EF%BC%8C16_9__541014619796496390.mp4?table=block&id=3b9d99c3-d331-808d-b99c-fa22fb998e7b&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=SonEsL5ybgYmEZP3me3tKQWnHNd24tZTQUcaq3167e4'
   },
   brand_spot: {
-    aspect: '16:9', intent: 'scene', style: 'Live-action, cinematic',
+    aspect: '16:9', intent: 'scene', style: 'Vintage film, 16mm grain',
     camType: 'pushes in', camAmp: 'with small amplitude', camSpd: 'at slow speed',
-    scene: 'A sunlit minimalist architectural studio where a runner laces sleek matte-black carbon sneakers before stepping onto a rain-slicked city bridge at dawn',
+    scene: 'A voyeuristic Wes Anderson-inspired 35mm film look seen through a fixed twin-circle vintage binocular viewfinder with fine grain and soft highlight halation',
     shots: [
-      { text: 'Tight low-angle framing as the runner bursts forward, water spraying from each stride in slow motion.' },
-      { text: 'A sweeping side track across the bridge as morning sunlight breaks through skyscrapers, ending on a crisp hero pose.' }
+      { text: 'Open out of focus with subtle handheld shake, then push in quickly and snap into focus on a stylized fashion installation.' },
+      { text: 'Fast whip-pan scan transitions with optical smear onto a stylish passerby adjusting sunglasses.' }
     ],
-    text: 'RUN BEYOND',
-    sound: 'Sharp lace tug, rhythmic footsteps splashing through shallow puddles, city dawn wind.',
-    music: 'Driving modern commercial hybrid score with crisp percussion, warm analog synths, and uplifting strings.',
-    hint: 'Multi-shot commercial template: wide-to-tight continuity with crisp end-card text.'
+    text: 'MINIMAX',
+    sound: 'Mechanical binocular focus-wheel click, gentle outdoor breeze, soft fabric flutter.',
+    music: 'Lightly playful retro chamber strings with crisp harpsichord pluck.',
+    hint: 'Official 3.1.1.1 Vintage Binocular Brand Film style.',
+    demoTitle: '3.1.1.1 Vintage Binocular Brand Film',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/750d6f42-9487-458f-8b63-05e9fdc77cee/750d6f42-9487-458f-8b63-05e9fdc77cee.mp4?table=block&id=61ad99c3-d331-8397-ab02-01bf94fe3a1b&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=SJIKqaF0UtrsOUmWOPt6dzbrXhmcPG5ukrzdeHPN5fY'
   },
-  billboard: {
-    aspect: '21:9', intent: 'scene', style: '3D CG, cinematic',
-    camType: 'pulls out', camAmp: 'with large amplitude', camSpd: 'at slow speed',
-    scene: 'Anamorphic widescreen dark obsidian stage lit by precision volumetric laser beams, brushed titanium monoliths rotating into alignment',
+  space_teaser: {
+    aspect: '16:9', intent: 'scene', style: 'Live-action, cinematic',
+    camType: 'shakes slightly, handheld', camAmp: 'with large amplitude', camSpd: 'at fast speed',
+    scene: 'Vast deep-space command deck shaking violently amidst starlight flashes and colossal orbital cruisers',
     shots: [
-      { text: 'Metallic plates lock together with glowing amber seams as sparks cascade across the reflective floor.' },
-      { text: 'The monoliths part smoothly to reveal bold monolithic typography hovering in crisp focus.' }
+      { text: 'Sharp hard cuts across a shaking bridge as white-hot engine flares erupt outside the viewport.' },
+      { text: 'Violent jump-to-warp impact flashing briefly against black before wide-tracked illuminated title typography emerges.' }
     ],
-    text: 'NEXT GEN STUDIO',
-    sound: 'Deep mechanical servo lock, crisp metallic chime, resonant spatial air whoosh.',
-    music: 'Widescreen theatrical brand sting with deep brass swell and crystal synth arpeggio.',
-    hint: 'Formatted for 21:9 digital billboards & widescreen brand reveals.'
+    text: 'BEYOND THE HORIZON',
+    sound: 'Thunderous hull groan, warp-drive sub-bass boom, alarm klaxons.',
+    music: 'Colossal theatrical sci-fi trailer brass and pounding war percussion.',
+    hint: 'Official 3.1.1.2 Epic Space Opera Teaser style.',
+    demoTitle: '3.1.1.2 Epic Space Opera Teaser',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/6de2e13b-944f-423a-9190-e12b5cdb71b9/6de2e13b-944f-423a-9190-e12b5cdb71b9.mp4?table=block&id=f72d99c3-d331-8236-8fa0-8161374ae042&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=pp6cj22YLUIPRu4J0x-S7CHcxBKxm0hzntCwOPtDpsc'
   },
-  viral_transfer: {
-    aspect: '9:16', intent: 'recreate', style: 'Live-action, handheld, natural light',
+  motion_gfx: {
+    aspect: '16:9', intent: 'scene', style: '3D CG, cinematic',
+    camType: 'tracks the subject', camAmp: 'with small amplitude', camSpd: 'at slow speed',
+    scene: 'Minimalist electric-blue and deep-navy abstract motion-graphics space where a continuous glowing white node traces a fluid light-blue waveform',
+    shots: [
+      { text: 'Clean geometric shapes morph smoothly along a single continuous glowing line with generous negative space.' },
+      { text: 'The continuous line resolves into bold crisp white typography and a unified waveform motif.' }
+    ],
+    text: 'UNIFIED CONTEXT',
+    sound: 'Clean crystalline chime, smooth liquid-light whoosh.',
+    music: 'Minimalist modern tech ambient electronica with warm glass arpeggios.',
+    hint: 'Official 3.1.3.1 Abstract Technology Brand Film style.',
+    demoTitle: '3.1.3.1 Abstract Technology Brand Film',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/dff5e039-9a73-4109-b713-070c0f9ff23c/MG%E5%8A%A8%E7%94%BB1.mp4?table=block&id=3b9d99c3-d331-802d-bde0-d87713477f5d&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=aUa7epmxS-h1Fv23KkgbNxNWUX-F_OG9Xjq8sI4cr4o'
+  },
+  ar_world: {
+    aspect: '16:9', intent: 'recreate', style: 'Live-action, handheld, natural light',
     camType: '', camAmp: '', camSpd: '',
-    scene: 'Bright, punchy lifestyle studio with warm daylight and clean backdrop matching the reference video pacing',
+    scene: 'Real-world daylight city intersection captured handheld, preserving natural street perspective and traffic while crisp AR graphics composite onto the scene',
     shots: [
-      { text: 'Follow the exact cut rhythm, whip-pans, and energetic hand gestures of <Video 1> while showcasing the attached subject/product cleanly.' }
+      { text: 'Preserve the original camera motion and street environment of <Video 1> while floating 3D AR elements lock cleanly into perspective.' }
     ],
     text: '',
-    sound: 'Natural room presence, crisp cloth rustle, snappy gesture swooshes.',
-    music: 'Upbeat modern social-ad groove with tight snare snaps and warm bassline.',
-    hint: 'Tip: Attach 1 reference video (<Video 1>) for pacing/camera transfer + 1–4 photos (<Picture 1>..) for subject/product.'
-  },
-  packaging: {
-    aspect: '1:1', intent: 'product', style: 'Live-action, cinematic',
-    camType: 'arcs around the subject', camAmp: 'with small amplitude', camSpd: 'at slow speed',
-    scene: 'A matte-textured kraft and foil-stamped specialty coffee tin on a warm walnut counter with soft directional window light',
-    shots: [
-      { text: 'Macro detail glides across the embossed gold foil lettering and paper grain, then opens slightly to reveal roasted beans inside.' }
-    ],
-    text: 'SINGLE ORIGIN · ROAST 04',
-    sound: 'Subtle cardboard lid slide, crisp foil crinkle, dry roasted beans settling.',
-    music: 'Warm acoustic guitar harmonics and gentle brushed percussion.',
-    hint: 'Tip: Attach front/side packaging photos (<Picture 1>..) to test label legibility & material finish.'
+    sound: 'Natural street ambience, distant traffic, crisp digital AR interface pop.',
+    music: 'Light upbeat modern electronic pulse.',
+    hint: 'Tip: Attach 1 street video (<Video 1>) for 3.1.4.1 AR World Editing.',
+    demoTitle: '3.1.4.1 AR World Editing',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/1d306ad9-6179-4f00-901f-a1174b548594/IMG_9503_(1).mov?table=block&id=3b9d99c3-d331-80c5-93b5-d7763454c90a&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=IBb-jW4ZJHgAJ8QZ_8VSZO7Ghp6tm01MSK7ECSo9BZo'
   },
   micro_drama: {
     aspect: '9:16', intent: 'person', style: 'Live-action, cinematic',
     camType: 'pushes in', camAmp: 'with small amplitude', camSpd: 'at slow speed',
-    scene: 'A rain-streaked late-night café booth lit by warm tungsten pendant lamps, two characters seated across a wooden table',
+    scene: 'Warm interior of a lived-in family dining room with shallow depth of field and intense emotional tension',
     shots: [
-      { text: 'Speaker 1 leans forward tensely, sliding a folded envelope across the table while avoiding eye contact.' },
-      { text: 'Over-the-shoulder reverse angle as Speaker 2 looks down at the envelope and answers quietly.' }
+      { text: 'Medium-close shot as Speaker 1 responds with hurt and urgency.' },
+      { text: 'Sharp shot/reverse-shot cut as Speaker 2 presses relentlessly in a sharp tone.' }
     ],
     dialogues: [
-      { speaker: 'the young woman across the table, quiet tense voice, on screen', lang: 'English', line: 'You told me nobody else knew.' },
-      { speaker: 'the man in the dark coat, calm low voice, on screen', lang: 'English', line: 'I lied so you would come tonight.' }
+      { speaker: 'young man, tense urgent voice, on screen', lang: 'English', line: 'You never told me the truth!' },
+      { speaker: 'older woman, sharp forceful tone, on screen', lang: 'English', line: 'Because you were never ready to hear it.' }
     ],
     text: '',
-    sound: 'Steady rain against café glass, soft ceramic cup clink, subtle fabric movement.',
-    music: 'Intimate melancholic piano motif with soft sustained cello underneath.',
-    hint: 'Tip: Attach 2–4 face photos per character (grouped as <Subject 1> / <Subject 2>) for consistent micro-drama cuts.'
+    sound: 'Tense room tone, subtle chair creak, sharp breath.',
+    music: 'Intimate dramatic cello and soft melancholic piano.',
+    hint: 'Official 3.1.5.2 Vertical Family Confrontation style — attach character photos.',
+    demoTitle: '3.1.5.2 Vertical Family Confrontation',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/0ba2cf8a-18e2-4c74-859e-fe91afa48c5b/0ba2cf8a-18e2-4c74-859e-fe91afa48c5b.mp4?table=block&id=64fd99c3-d331-83ad-9b6a-01e746e414e8&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=STws0I1LQ8lmPnrIGN4OK1FTN8gah1lptLrJiHJwQd8'
+  },
+  saas_ui: {
+    aspect: '16:9', intent: 'product', style: '3D CG, cinematic',
+    camType: 'pushes in', camAmp: 'with small amplitude', camSpd: 'at fast speed',
+    scene: 'High-impact Nike-inspired dark carbon-fiber product landing page with oversized bold italicized sans-serif typography and speed light streaks',
+    shots: [
+      { text: 'Smooth powerful UI scroll reveals the hero product with dynamic scale-up hover interactions and crisp color inversions.' }
+    ],
+    text: 'ENGINEERED FOR SPEED',
+    sound: 'Snappy UI hover clicks, sleek kinetic scroll whoosh.',
+    music: 'High-energy athletic electronic beat with crisp percussive hits.',
+    hint: 'Official 3.1.7.2 Nike-Style Product Landing Page UI/UX Demo.',
+    demoTitle: '3.1.7.2 Nike-Style Product Landing Page',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/4847b48e-af7f-4499-9d74-f50a717bf071/ceb748012c82_denoise_ids_0_final_(1)_(1).mp4?table=block&id=3b9d99c3-d331-80f1-b57b-e8c3576aee83&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=7Z92QPIU7bf2lGAcSGZPXUhEni3LsWz9kj8PF6E7VyA'
+  },
+  robotics: {
+    aspect: '16:9', intent: 'scene', style: 'Live-action, documentary',
+    camType: 'holds a static shot', camAmp: '', camSpd: '',
+    scene: 'Clean industrial robotics workbench with locked-off overhead-angle lighting, an articulated robotic arm positioned above a matte red cube',
+    shots: [
+      { text: 'The robotic arm lowers smoothly, grips the red block cleanly, translates it forward across the bench, and sets it down steadily.' }
+    ],
+    text: '',
+    sound: 'Precision stepper motor whir, soft pneumatic gripper click, block tap on table.',
+    music: 'N/A',
+    hint: 'Official 3.1.8.1 Robotic Arm Embodied AI Demo.',
+    demoTitle: '3.1.8.1 Robotic Arm Demonstration',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/67830897-e7f7-4fb8-ba7a-aacad065126a/Hailuo_Video_%E6%9C%BA%E5%99%A8%E8%87%82%E4%B8%8B%E9%99%8D%EF%BC%8C%E6%8A%93%E8%B5%B7%E7%BA%A2%E8%89%B2%E6%96%B9%E5%9D%97%EF%BC%8C%E5%90%91%E5%89%8D%E7%A7%BB%E5%8A%A8%E4%B8%80%E6%AE%B5%E8%B7%9D%E7%A6%BB%E5%90%8E%E6%94%BE%E4%B8%8B_539561186482315272_(1).mp4?table=block&id=3b9d99c3-d331-809a-a12c-d813b4bfa3e1&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=AeLBJjkGb7TE8H9YWDG5hf7q-zesRSzuWy12U19zV8g'
+  },
+  claymation: {
+    aspect: '16:9', intent: 'scene', style: 'Claymation',
+    camType: 'tracks the subject', camAmp: 'with large amplitude', camSpd: 'at fast speed',
+    scene: 'Hand-sculpted clay fox sprinting to the jagged edge of an immense glowing lava canyon',
+    shots: [
+      { text: 'The fox launches without hesitation into a dramatic heroic slow-motion leap across the glowing chasm.' },
+      { text: 'Midair, the camera races beneath the fox’s belly in a bold dynamic move, revealing the depth of the molten canyon.' }
+    ],
+    text: '',
+    sound: 'Soft clay footsteps on rock, rushing canyon wind, deep molten lava rumble.',
+    music: 'Sweeping heroic orchestral adventure theme with soaring horns.',
+    hint: 'Official 3.1.9.1 Claymation Lava Canyon Leap style.',
+    demoTitle: '3.1.9.1 Claymation Lava Canyon Leap',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/0968eff3-b0e8-4c3d-a00f-0cd61a4d8d1e/0968eff3-b0e8-4c3d-a00f-0cd61a4d8d1e.mp4?table=block&id=124d99c3-d331-823c-9d90-815fcbd316b1&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=HDkn3wmp5KnE6sCS5DQPQ7VR5kqFLTJf52ZVZlZI_rQ'
   },
   anime_action: {
     aspect: '16:9', intent: 'scene', style: '2D-animated, cel-shaded',
     camType: 'tracks the subject', camAmp: 'with large amplitude', camSpd: 'at fast speed',
-    scene: 'High-contrast 2D anime rooftop battle at neon twilight, glowing cyan energy arcs crackling around a cloaked swordfighter',
+    scene: 'Pure 2D cel-animation blended with high-contrast golden-yellow, black, and white flat graphic poster composition',
     shots: [
-      { text: 'The swordfighter dashes across wet concrete tiles, leaping over shattering vents with dramatic speed-lines.' },
-      { text: 'Dynamic whip-cut close-up as the blade slashes through sparks, sending shockwave rings across the skyline.' }
+      { text: 'Flat line-drawn architectural grids and bold diagonal masks snap rapidly around a stylized character in constant motion.' },
+      { text: 'Dynamic graphic match-cut with color inversion and crisp red warning accents.' }
     ],
     text: '',
-    sound: 'Sharp blade unsheathe, crackling plasma arcs, thunderous footstep impacts, howling rooftop wind.',
-    music: 'High-octane anime orchestral rock with fast taiko drums, soaring electric guitar, and brass hits.',
-    hint: 'Anime action preset: high dynamic motion with cel-shaded lighting and impact frames.'
+    sound: 'Crisp graphic wipe swooshes, stylized impact hits, urban hum.',
+    music: 'Cool noir-jazz suspense cue with walking bass, brushwork, and clipped brass accents.',
+    hint: 'Official 3.1.9.7 Anime-Inspired 2D Cel Style.',
+    demoTitle: '3.1.9.7 Anime-Inspired Style',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/3f0d8305-e91c-4be8-ad1a-5e52c55f5fdf/%E6%B5%B7%E8%9E%BA_%E8%A7%86%E9%A2%91_%E9%A3%8E%E6%A0%BC%E8%AE%BE%E5%AE%9A%EF%BC%9A_%E7%BA%AF%E4%BA%8C%E7%BB%B4%E8%B5%9B_540976941206548484_(1).mp4?table=block&id=3b9d99c3-d331-80e3-af80-dd890ad0529a&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=MHVZKByrXITb-WWMkBAElcMWIwflBg81prnC6btj2sg'
   },
   music_video: {
     aspect: '16:9', intent: 'person', style: 'Live-action, cinematic',
     camType: 'arcs around the subject', camAmp: 'with large amplitude', camSpd: 'at fast speed',
-    scene: 'Neon-drenched underground concrete warehouse bathed in strobing magenta and electric blue backlight, hazy atmospheric fog',
+    scene: 'Dark-pop cyber-grunge rap music video with high-fashion polish and scanned 1990s indie film-zine texture, coarse grain, and halftone accents',
     shots: [
-      { text: 'The vocalist performs center-frame under harsh silhouette strobes, moving tightly on the downbeat.' },
-      { text: 'Rapid rhythmic cut to an ultra-wide low-angle shot as kinetic typography flashes behind the performer.' }
+      { text: 'Hard-cut rapid performance shots under stark underground strobes with crisp zine-collage typography.' }
     ],
-    text: 'MIDNIGHT FREQUENCY',
-    sound: 'Heavy warehouse reverb, crowd energy, crisp vocal breath.',
-    music: 'Punchy 128 BPM synth-pop / hip-hop beat with booming 808 sub, crisp hi-hats, and shimmering lead synth.',
-    hint: 'Tip: Attach an <Audio 1> music track (+ optional <Picture 1> performer photo) to lock movement to the beat.'
-  },
-  gaming_hud: {
-    aspect: '16:9', intent: 'scene', style: '3D CG, cinematic',
-    camType: 'pushes in', camAmp: 'with large amplitude', camSpd: 'at fast speed',
-    scene: 'Next-gen sci-fi tactical shooter HUD over a rain-swept cybernetic hangar, holographic radar and crisp ammo counter framing an armored operative',
-    shots: [
-      { text: 'The operative raises a plasma rifle as the holographic visor locks onto targets with crisp animated telemetry.' },
-      { text: 'Rapid tactical dash forward through sparks and volumetric fog as HUD health and mission markers update cleanly.' }
-    ],
-    text: 'SECTOR 09 // TARGET LOCKED',
-    sound: 'Crisp HUD lock-on beeps, heavy exo-suit servo steps, plasma charge hum, rain on metal.',
-    music: 'Adrenaline sci-fi hybrid synth score with industrial percussion and low sub-bass pulses.',
-    hint: 'Gaming & HUD preset: crisp overlay telemetry + 3D cinematic action.'
-  },
-  saas_ui: {
-    aspect: '16:9', intent: 'scene', style: '3D CG, cinematic',
-    camType: 'arcs around the subject', camAmp: 'with small amplitude', camSpd: 'at slow speed',
-    scene: 'Clean frosted-glass SaaS dashboard floating in a bright minimalist studio space, crisp UI cards and animated analytics charts',
-    shots: [
-      { text: 'A smooth cursor glides across the interface, clicking a primary action button that expands a real-time waveform timeline.' },
-      { text: 'The UI cards tilt subtly in 3D parallax as bold clean product typography animates beside the window.' }
-    ],
-    text: 'WORKFLOW AUTOMATED',
-    sound: 'Soft tactile UI clicks, subtle glass whoosh transitions, gentle studio room tone.',
-    music: 'Clean modern tech corporate groove with light marimba plucks and warm synth pads.',
-    hint: 'Tip: Attach a UI screenshot (<Picture 1>) as First Frame or Reference to animate your real app interface.'
+    text: 'UNDERGROUND',
+    sound: 'Heavy concrete reverb, crisp vocal breath.',
+    music: 'Hard-hitting dark-pop / cyber-grunge rap beat with distorted 808s and sharp hi-hats.',
+    hint: 'Official 3.1.2.4 Cyber-Grunge Rap Music Video style.',
+    demoTitle: '3.1.2.4 Cyber-Grunge Rap Music Video',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/68c6fb8f-0d0d-4e79-921b-e95b8f5dd78b/68c6fb8f-0d0d-4e79-921b-e95b8f5dd78b.mp4?table=block&id=19cd99c3-d331-82e7-a5de-0140f55e85c8&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=nwtc_exM1aUnLxjZX1b-e6otntM7a10CRFIbQeGc7PY'
   }
 };
 
@@ -2470,48 +2551,31 @@ function showStylePreview(forceOpen = true) {
   if (!pop || !body) return;
   const styleVal = $('#bStyle')?.value || B.style;
   const tmplKey = $('#bTemplate')?.value || '';
+  const tpl = tmplKey && COMMERCIAL_PRESETS[tmplKey];
   const tplLabel = tmplKey ? $('#bTemplate')?.selectedOptions?.[0]?.textContent : '';
   if (forceOpen) pop.hidden = false;
   if (pop.hidden) return;
-  title.textContent = tplLabel ? `Preview · ${tplLabel}` : `Style preview · ${styleVal}`;
-  const clip = findSampleClipFor(styleVal, tmplKey);
-  if (clip) {
-    body.innerHTML = `<video src="${url(clip.id, clip.output)}" autoplay loop muted playsinline controls></video>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px">
-        <span class="hint">From your library: #${clip.num ?? '—'} · ${esc(clipName(clip))} (${( (clip.frames || 124) / FPS).toFixed(1)}s)</span>
-        <button class="btn sm" type="button" id="bRenderSample">Render new 5s sample</button>
+
+  const official = (tpl?.demoUrl ? { title: tpl.demoTitle || tplLabel, url: tpl.demoUrl } : null) || OFFICIAL_STYLE_DEMOS[styleVal] || null;
+  title.textContent = official ? `Official H3 Guide Demo · ${official.title}` : (tplLabel ? `Preview · ${tplLabel}` : `Style preview · ${styleVal}`);
+
+  if (official) {
+    body.innerHTML = `<video src="${esc(official.url)}" autoplay loop muted playsinline controls></video>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
+        <span class="hint">Expected output from MiniMax-H3 Notion guide (${esc(official.title)})</span>
+        <button class="btn sm" type="button" id="bRenderSample">Render 5s Draft Sample (${minFrameCount()}f · 8 steps)</button>
       </div>`;
   } else {
     const note = STYLE_NOTES[styleVal] || 'Structured H3 look and lighting direction.';
-    const tpl = tmplKey && COMMERCIAL_PRESETS[tmplKey];
     const asp = tpl?.aspect || $('#aspect')?.value || '16:9';
     const ratioMap = { '16:9': '16/9', '9:16': '9/16', '21:9': '21/9', '1:1': '1/1', '4:3': '4/3', '3:4': '3/4' };
     const cssRatio = ratioMap[asp] || '16/9';
-    const paletteMap = {
-      'Live-action, cinematic': ['#131822', '#d49a5a', '#355c7d'],
-      'Live-action, documentary': ['#1f2421', '#9db4ab', '#dce1de'],
-      'Live-action, handheld, natural light': ['#26231e', '#d6b78b', '#7b8c7a'],
-      '3D CG, cinematic': ['#0c1220', '#38bdf8', '#f59e0b'],
-      '2D-animated, cel-shaded': ['#1b102b', '#ff477e', '#00f5d4'],
-      'Claymation': ['#2d241e', '#e07a5f', '#f2cc8f'],
-      'Watercolor animation': ['#f4efe6', '#6b9080', '#e09f7d'],
-      'Vintage film, 16mm grain': ['#211a14', '#c9935b', '#7a634b']
-    };
-    const pal = paletteMap[styleVal] || ['#141820', '#7c98b3', '#d4a373'];
     body.innerHTML = `<div class="style-pop-empty">
       <div style="width:100%;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <div style="width:180px;max-width:100%;aspect-ratio:${cssRatio};max-height:130px;background:linear-gradient(135deg,${pal[0]} 0%,${pal[2]} 100%);border:1px solid var(--i40);position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:8px;overflow:hidden">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span class="tc" style="font-size:10px;background:rgba(0,0,0,.55);color:#fff;padding:1px 5px">${esc(asp)}</span>
-            <span class="tc" style="font-size:10px;color:${pal[1]}">● ${esc(styleVal.split(',')[0])}</span>
-          </div>
-          ${tpl?.text ? `<div style="font:700 11px/1.2 var(--label);letter-spacing:.08em;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.8);text-align:center">${esc(tpl.text)}</div>` : `<div style="font:600 10.5px/1.2 var(--label);color:rgba(255,255,255,.8);text-align:center">${esc(B.camType || 'cinematic framing')}</div>`}
-          <div style="display:flex;gap:4px">${pal.map(c => `<i style="display:block;width:14px;height:6px;background:${c};border:1px solid rgba(255,255,255,.25)"></i>`).join('')}</div>
-        </div>
+        <div style="width:160px;aspect-ratio:${cssRatio};background:var(--i20);border:1px solid var(--i40);display:flex;align-items:center;justify-content:center;font:600 11px var(--tc)">${esc(asp)}</div>
         <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:6px">
           <div style="font-size:13px;color:var(--i90)">${esc(note)}</div>
-          <div class="hint">No rendered video for "${esc(tplLabel || styleVal)}" in your library yet — render a quick 5s draft to preview real output here.</div>
-          <div><button class="btn sm" type="button" id="bRenderSample">Render 5s Draft Sample (${minFrameCount()}f · 8 steps)</button></div>
+          <button class="btn sm" type="button" id="bRenderSample">Render 5s Draft Sample (${minFrameCount()}f · 8 steps)</button>
         </div>
       </div>
     </div>`;
