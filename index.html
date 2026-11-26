@@ -1358,7 +1358,7 @@ function bindRefsIntoPrompt() {
   if (wf === 'fl2va') {
     const hasFirst = !!$('#compose [name=image]').files[0];
     const hasLast = !!$('#compose [name=last_image]').files[0];
-    const frames = +$('#frames').value || 124, dur = (frames / FPS).toFixed(2);
+    const frames = +$('#frames').value || minFrameCount(), dur = (frames / FPS).toFixed(2);
     const header = hasFirst && hasLast
       ? `How the reference pictures align with the target video — <Picture 1> (from [Shot 1]) aligns with the 0.00-second mark of the target video; <Picture 2> (from [Shot 1]) aligns with the ${dur}-second mark of the target video.`
       : hasLast
@@ -2084,13 +2084,16 @@ function updateIntentHint() {
   el.textContent = INTENT_HINT[B.intent] || '';
   el.style.display = B.intent === 'scene' ? 'none' : '';
 }
+const maxBuilderShots = () => Math.min(10, Math.max(4, Math.round(((+$('#frames').value || minFrameCount()) / FPS) / 3)));
 function shotsUI() {
   const w = $('#bShots');
+  const maxS = maxBuilderShots();
   w.innerHTML = B.shots.map((s, i) => `<div class="shot" data-i="${i}">
     <div class="sh"><span class="lbl">${i === 0 ? 'Shot 1 · opening' : 'Shot ' + (i + 1)}</span>
       ${i ? `<button class="btn sm danger" type="button" data-del="${i}" aria-label="Remove shot ${i + 1}">${icon('x')}</button>` : ''}</div>
     <textarea data-shot="${i}" style="min-height:64px" placeholder="${i === 0 ? 'What happens, in order. Who moves, what changes.' : 'What the cut reveals. New subject, space or state.'}">${esc(s.text)}</textarea>
   </div>`).join('');
+  if ($('#bAddShot')) $('#bAddShot').disabled = B.shots.length >= maxS;
   w.querySelectorAll('textarea').forEach(t => t.oninput = e => {
     B.shots[+e.target.dataset.shot].text = e.target.value;
     builderPolished = false;
@@ -2127,7 +2130,7 @@ function updateWorkflowBadges() {
 }
 function buildPrompt() {
   const wf = workflowNow();
-  const frames = +$('#frames').value || 124, dur = (frames / FPS).toFixed(2);
+  const frames = +$('#frames').value || minFrameCount(), dur = (frames / FPS).toFixed(2);
   const hasFirst = !!$('#compose [name=image]').files[0];
   const hasLast = !!$('#compose [name=last_image]').files[0];
   const style = B.style.trim(), scene = B.scene.trim(), cam = B.cam.trim();
@@ -2221,7 +2224,7 @@ function openBuilder() {
 
 $('#craft').onclick = openBuilder;
 $('#bClose').onclick = () => $('#dlg').close();
-$('#bAddShot').onclick = () => { if (B.shots.length < 4) { B.shots.push({ text: '' }); builderPolished = false; shotsUI(); preview() } };
+$('#bAddShot').onclick = () => { if (B.shots.length < maxBuilderShots()) { B.shots.push({ text: '' }); builderPolished = false; shotsUI(); preview() } };
 $('#bUse').onclick = () => {
   $('#prompt').value = $('#bPrev').textContent || buildPrompt();
   $('#prompt').dispatchEvent(new Event('input'));
@@ -2264,7 +2267,7 @@ async function runPolish(draft, onDone, btn) {
         mode: workflowNow(),
         refs: buildDetailedTagSummary(),
         aspect: $('#aspect').value,
-        frames: +$('#frames').value || 124,
+        frames: +$('#frames').value || minFrameCount(),
         intent: B.intent
       })
     });
