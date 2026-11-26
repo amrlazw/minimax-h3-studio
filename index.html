@@ -857,10 +857,10 @@ const maxFrameCount = () => {
 function refreshCost() {
   const minFr = minFrameCount(), nativeMax = engine?.native_max_frames ?? 345;
   const fr = +$('#frames').value || minFr;
-  const stepVals = engine?.steps ? Object.values(engine.steps) : [8, 12, 25, 36, 50];
-  for (const n of stepVals) {
+  for (const btn of $$('#segSteps button')) {
+    const n = +btn.dataset.steps;
     const el = $('#t' + n);
-    if (el) el.textContent = '~' + short(cost(n, fr));
+    if (el && n) el.textContent = '~' + short(cost(n, fr));
   }
   const lh = $('#lenHint');
   if (lh) lh.textContent = `${(fr / FPS).toFixed(2)} s · ${fr} frames` + (fr <= minFr ? ` · shortest H3 allows (${Math.floor(minFr / FPS)} s floor)` : fr > nativeMax ? ' · extended clip — heavy VRAM; use ≤ 25 steps' : '');
