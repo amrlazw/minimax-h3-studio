@@ -330,6 +330,11 @@ dialog.confirm-dlg{width:min(460px,92vw)}
 .dlg .foot .hint{margin-right:auto}
 .confirm-body{padding:18px;display:flex;flex-direction:column;gap:8px;color:var(--i90);font-size:14.5px;line-height:1.5}
 pre.prev{white-space:pre-wrap;word-break:break-word;font:12.5px/1.6 var(--tc);background:var(--i0);border:1px solid var(--i30);padding:12px;max-height:280px;overflow:auto;color:var(--i90)}
+.style-pop{background:var(--i0);border:1px solid var(--i40);padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.style-pop[hidden]{display:none}
+.style-pop-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.style-pop video{width:100%;max-height:210px;background:#000;border:1px solid var(--i30);object-fit:contain}
+.style-pop-empty{padding:14px;border:1px dashed var(--i40);background:var(--i10);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 .shot{border:1px solid var(--i30);padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--i0)}
 .shot .sh{display:flex;align-items:center;gap:8px}
 .shot .sh .lbl{color:var(--i100)}
@@ -673,7 +678,7 @@ footer a{color:var(--i80)}
         </select>
         <div class="hint" id="bTemplateHint"></div></div>
 
-      <div class="field span2"><label class="lbl" for="bStyle">Style</label>
+      <div class="field span2"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><label class="lbl" for="bStyle">Style</label><button class="btn sm" type="button" id="bStylePrevBtn">Preview style</button></div>
         <select id="bStyle">
           <option value="Live-action, cinematic">Live-action, cinematic</option>
           <option value="Live-action, documentary">Live-action, documentary</option>
@@ -684,6 +689,14 @@ footer a{color:var(--i80)}
           <option value="Watercolor animation">Watercolor animation</option>
           <option value="Vintage film, 16mm grain">Vintage film, 16mm grain</option>
         </select></div>
+
+      <div class="span2 style-pop" id="stylePreviewPop" hidden>
+        <div class="style-pop-head">
+          <span class="lbl" id="stylePopTitle">Style preview</span>
+          <button class="btn icon sm" type="button" id="stylePopClose" aria-label="Close style preview"><svg class="ic"><use href="#i-x"/></svg></button>
+        </div>
+        <div id="stylePopBody"></div>
+      </div>
 
       <div class="field span2"><label class="lbl" for="bIntent">What are you making?</label>
         <select id="bIntent">
@@ -2419,6 +2432,89 @@ const COMMERCIAL_PRESETS = {
   }
 };
 
+const STYLE_NOTES = {
+  'Live-action, cinematic': 'Anamorphic shallow depth of field, rich shadows, natural skin texture, controlled filmic contrast.',
+  'Live-action, documentary': 'Natural ambient lighting, observational framing, crisp realistic textures, candid human movement.',
+  'Live-action, handheld, natural light': 'Organic shoulder-rig micro-shake, available daylight/practical fixtures, raw immediacy.',
+  '3D CG, cinematic': 'Clean physically-based rendering, sharp specular highlights, volumetric light rays, smooth studio motion.',
+  '2D-animated, cel-shaded': 'Crisp ink linework, flat-shaded color blocks, expressive timing, dynamic anime/animation smears.',
+  'Claymation': 'Tactile sculpted clay surfaces, subtle thumbprints, miniature set lighting, charming stop-motion cadence.',
+  'Watercolor animation': 'Soft bleeding pigment washes, textured cold-press paper grain, fluid painterly transitions.',
+  'Vintage film, 16mm grain': 'Warm halation, organic 16mm celluloid grain, slightly faded highlights, nostalgic lens vignette.'
+};
+
+function findSampleClipFor(styleVal, tmplKey) {
+  const done = (lastJobs || []).filter(j => j.status === 'done' && j.output);
+  if (!done.length) return null;
+  let pinned = {};
+  try { pinned = JSON.parse(LS.get('styleSamples', '{}')) } catch {}
+  const pinId = (tmplKey && pinned['tpl:' + tmplKey]) || pinned[styleVal];
+  if (pinId) {
+    const found = done.find(j => j.id === pinId);
+    if (found) return found;
+  }
+  const tpl = tmplKey && COMMERCIAL_PRESETS[tmplKey];
+  if (tpl?.text) {
+    const byText = done.find(j => (j.prompt || '').includes(tpl.text));
+    if (byText) return byText;
+  }
+  const needle = (styleVal || '').toLowerCase();
+  const exact = done.find(j => (j.prompt || '').toLowerCase().includes(needle));
+  if (exact) return exact;
+  const kw = needle.split(',')[0].trim();
+  return kw ? done.find(j => (j.prompt || '').toLowerCase().includes(kw)) : null;
+}
+
+function showStylePreview(forceOpen = true) {
+  const pop = $('#stylePreviewPop'), body = $('#stylePopBody'), title = $('#stylePopTitle');
+  if (!pop || !body) return;
+  const styleVal = $('#bStyle')?.value || B.style;
+  const tmplKey = $('#bTemplate')?.value || '';
+  const tplLabel = tmplKey ? $('#bTemplate')?.selectedOptions?.[0]?.textContent : '';
+  if (forceOpen) pop.hidden = false;
+  if (pop.hidden) return;
+  title.textContent = tplLabel ? `Preview · ${tplLabel}` : `Style preview · ${styleVal}`;
+  const clip = findSampleClipFor(styleVal, tmplKey);
+  if (clip) {
+    body.innerHTML = `<video src="${url(clip.id, clip.output)}" autoplay loop muted playsinline controls></video>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px">
+        <span class="hint">From your library: #${clip.num ?? '—'} · ${esc(clipName(clip))} (${( (clip.frames || 124) / FPS).toFixed(1)}s)</span>
+        <button class="btn sm" type="button" id="bRenderSample">Render new 5s sample</button>
+      </div>`;
+  } else {
+    const note = STYLE_NOTES[styleVal] || 'Structured H3 look and lighting direction.';
+    body.innerHTML = `<div class="style-pop-empty">
+      <div style="font-size:13px;color:var(--i90)">${esc(note)}</div>
+      <div class="hint">No rendered clip for "${esc(styleVal)}" in your library yet.</div>
+      <button class="btn sm" type="button" id="bRenderSample">Render 5s Draft Sample (${minFrameCount()}f · 8 steps)</button>
+    </div>`;
+  }
+  const rs = $('#bRenderSample');
+  if (rs) rs.onclick = async () => {
+    if (!KEY && !COOKIE) return msg('Connect with the API key first.', true);
+    rs.disabled = true; rs.textContent = 'Queuing…';
+    try {
+      const fd = new FormData();
+      fd.append('prompt', $('#bPrev').textContent || buildPrompt());
+      fd.append('frames', String(minFrameCount()));
+      fd.append('steps', '8');
+      fd.append('aspect', $('#aspect')?.value || '16:9');
+      fd.append('audio_mode', 'peak');
+      fd.append('seed', '-1');
+      const j = await api('/api/jobs', { method: 'POST', body: fd });
+      lastSig = ''; await poll();
+      msg(`Queued 5s draft sample #${j.num ?? '—'} for ${styleVal}.`);
+    } catch (e) { msg('Could not queue sample: ' + e.message, true) }
+    finally { rs.disabled = false; rs.textContent = 'Render 5s Draft Sample' }
+  };
+}
+
+if ($('#stylePopClose')) $('#stylePopClose').onclick = () => { $('#stylePreviewPop').hidden = true };
+if ($('#bStylePrevBtn')) $('#bStylePrevBtn').onclick = () => {
+  const pop = $('#stylePreviewPop');
+  if (pop) { pop.hidden = !pop.hidden; if (!pop.hidden) showStylePreview(true) }
+};
+
 function applyCommercialPreset(key) {
   const p = COMMERCIAL_PRESETS[key];
   const hintEl = $('#bTemplateHint');
@@ -2439,8 +2535,10 @@ function applyCommercialPreset(key) {
   updateIntentHint();
   if (hintEl) hintEl.textContent = p.hint || '';
   saveDraft(); preview();
+  showStylePreview(true);
 }
 if ($('#bTemplate')) $('#bTemplate').onchange = e => applyCommercialPreset(e.target.value);
+if ($('#bStyle')) $('#bStyle').addEventListener('change', () => showStylePreview(true));
 
 function openBuilder() {
   loadDraft();
