@@ -435,6 +435,7 @@ footer a{color:var(--i80)}
         <div class="compose-head-acts">
           <button class="btn sm" type="button" id="composeToggle" aria-expanded="true">Collapse</button>
           <button class="btn sm" type="button" id="pPolish" hidden><svg class="ic"><use href="#i-magic"/></svg>Polish</button>
+          <button class="btn sm" type="button" id="pRepair" title="Auto-repair H3 prompt tags &amp; sections">Repair</button>
           <button class="btn sm" type="button" id="craft"><svg class="ic"><use href="#i-magic"/></svg>Builder</button>
           <button class="btn sm" type="button" id="resetCompose">Reset</button>
         </div>
@@ -2516,16 +2517,60 @@ async function runPolish(draft, onDone, btn) {
   finally { btn.disabled = false; btn.innerHTML = prevHtml }
 }
 
-$('#pPolish').onclick = () => runPolish($('#prompt').value, p => {
-  $('#prompt').value = p;
+function repairPromptText(raw, wf = workflowNow()) {
+  let text = String(raw || '').trim();
+  if (!text) return text;
+  // Strip stray markdown code fences
+  text = text.replace(/^```[a-zA-Z]*\n([\s\S]*?)\n```$/m, '$1').trim();
+  // Fix bare Picture 1 / Video 1 / Audio 1 / Subject 1 tags missing angle brackets
+  text = text.replace(/(^|[^<\w])(Picture|Video|Audio|Subject)\s+(\d+)(?!\s*>)/gi, (_, pre, kind, n) => {
+    const cap = kind[0].toUpperCase() + kind.slice(1).toLowerCase();
+    return `${pre}<${cap} ${n}>`;
+  });
+  // Close unclosed <d> dialogue tags
+  const opens = (text.match(/<d>/gi) || []).length;
+  const closes = (text.match(/<\/d>/gi) || []).length;
+  if (opens > closes) {
+    text = text.replace(/(<d>[^\n<]*?)(?=\n|$)(?![\s\S]*<\/d>)/i, '$1</d>');
+    if ((text.match(/<d>/gi) || []).length > (text.match(/<\/d>/gi) || []).length) text += '</d>';
+  }
+  // Ensure structured H3 core sections exist
+  if (wf === 'ref2va') {
+    const tagged = resolveRefTags(refFiles);
+    if (tagged.length && !/^subject_definitions:/im.test(text)) {
+      const { defsText, retText } = generateRefBindings(tagged, B.intent);
+      const body = text.replace(/^integrated_multimodal_description:\s*/im, '');
+      text = `subject_definitions: ${defsText}\n\nsummary: [reference generation] ${body.split('\n')[0].slice(0, 180)}\n\nretention_analysis: ${retText}\n\ndetailed_description: ${body}`;
+    }
+  } else if (!/integrated_multimodal_description:/i.test(text) && !/detailed_description:/i.test(text)) {
+    const body = /\[Shot\s*1\]/i.test(text) ? text : `[Shot 1] ${text}`;
+    text = `integrated_multimodal_description: ${body}`;
+  }
+  if (!/overall_soundscape:/i.test(text)) text += '\n\noverall_soundscape: Natural ambient room tone and physical action sounds.';
+  if (!/non_diegetic_music:/i.test(text)) text += '\n\nnon_diegetic_music: N/A';
+  return text.trim();
+}
+
+if ($('#pRepair')) $('#pRepair').onclick = () => {
+  const cur = $('#prompt').value;
+  if (!cur.trim()) return msg('Write or paste a prompt first before repairing.', true);
+  const fixed = repairPromptText(cur);
+  $('#prompt').value = fixed;
   $('#prompt').dispatchEvent(new Event('input'));
-  msg('Prompt polished by Qwen.');
+  msg('Prompt repaired to H3 structure & tag syntax.');
+};
+
+$('#pPolish').onclick = () => runPolish($('#prompt').value, p => {
+  $('#prompt').value = repairPromptText(p);
+  $('#prompt').dispatchEvent(new Event('input'));
+  msg('Prompt polished by Qwen & verified.');
 }, $('#pPolish'));
 
 $('#bPolish').onclick = () => runPolish($('#bPrev').textContent || buildPrompt(), p => {
   builderPolished = true;
-  $('#bPrev').textContent = p;
-  $('#bHint').textContent = `Polished (${p.length} chars) — click Use this prompt or Copy`;
+  const fixed = repairPromptText(p);
+  $('#bPrev').textContent = fixed;
+  $('#bHint').textContent = `Polished (${fixed.length} chars) — click Use this prompt or Copy`;
 }, $('#bPolish'));
 
 /* ---------------- station strip ---------------- */

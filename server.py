@@ -1428,20 +1428,51 @@ async def polish(request: Request):
         text = (data["choices"][0]["message"].get("content") or "").strip()
         text = re.sub(r"<think>[\s\S]*?</think>\s*", "", text).strip()
         text = re.sub(r"^```[a-zA-Z]*\n([\s\S]*?)\n```$", r"\1", text).strip()
+        text = _repair_polished_prompt(text, mode)
     except Exception as e:
         raise HTTPException(502, f"polish backend failed: {type(e).__name__}: {e}")
     return {"prompt": text}
 
 
+def _repair_polished_prompt(text: str, mode: str) -> str:
+    """Clean up common LLM formatting slips in polished MiniMax-H3 prompts."""
+    if not text:
+        return text
+    # Fix bare ref tags like Picture 1 / Video 1 / Audio 1 / Subject 1 missing angle brackets
+    text = re.sub(r"(?<![<\w])(Picture|Video|Audio|Subject)\s+(\d+)(?!\s*>)", r"<\1 \2>", text, flags=re.I)
+    # Close unclosed <d> dialogue tags at end of line/text
+    if text.count("<d>") > text.count("</d>"):
+        text = re.sub(r"(<d>[^\n<]*?)(?=\n|$)(?![\s\S]*</d>)", r"\1</d>", text)
+        if text.count("<d>") > text.count("</d>"):
+            text += "</d>"
+    # Ensure required trailing audio sections exist so H3 separates foley from BGM
+    if "overall_soundscape:" not in text:
+        text += "\n\noverall_soundscape: Natural ambient room tone and physical action sounds."
+    if "non_diegetic_music:" not in text:
+        text += "\n\nnon_diegetic_music: N/A"
+    return text.strip()
+
+
 def _guide(mode):
     p = Path("/app/guides")
     name = "ref_en.md" if mode == "ref2va" else "base_en.md"
+    rules = (
+        "Rewrite the user's request into a production-ready MiniMax H3 prompt in English "
+        "(keep spoken dialogue inside <d>[Language] ...</d> and on-screen signage inside \"...\").\n"
+        "CRITICAL PROMPTING RULES:\n"
+        "1. Replace vague buzzwords ('cinematic', 'photorealistic', 'hyper-detailed') with concrete lighting, lens/framing, materials, and physical motion.\n"
+        "2. Match shot count to Target duration: 1-2 shots for <=8s, 2-3 shots for 9-16s, 3-5 shots for >16s; [Shot 1] has NO timestamp, later shots use strictly increasing [Shot N] At mm:ss.mmm.\n"
+        "3. Describe action continuity smoothly ('begins by..., then..., continuing as...') so subjects do not morph.\n"
+        "4. Write camera motion naturally inside each shot as Motion Type + Amplitude + Speed (e.g. 'pushes in with small amplitude at slow speed').\n"
+        "5. Wrap ALL spoken lines/lyrics in <d>[Language] ...</d> with global speaker IDs (S1), (S2); wrap ALL visible on-screen text in double quotes.\n"
+        "6. Keep overall_soundscape strictly for ambience/foley (no dialogue or score) and non_diegetic_music strictly for BGM (or N/A).\n"
+        "7. Return ONLY the final structured prompt — no markdown fences, no commentary.\n\n"
+    )
     try:
         text = (p / name).read_text()
     except Exception:
-        return "Rewrite the user's video prompt so it is explicit, shot by shot, with sound."
-    return ("Rewrite the user's request as a MiniMax H3 prompt. Follow this guide exactly. "
-            "Return only the prompt text, no commentary.\n\n" + text[:24000])
+        return rules + "Structure with integrated_multimodal_description, overall_soundscape, and non_diegetic_music."
+    return rules + text[:24000]
 
 
 # ---------------------------------------------------------------- model
