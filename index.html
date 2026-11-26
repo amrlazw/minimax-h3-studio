@@ -3047,12 +3047,14 @@ function renderHud(j, live) {
     : j.status === 'cancelled' ? 'Stopped' : 'Fault';
   const w = j.media?.width || j.target_width;
   const h = j.media?.height || j.target_height;
+  const renderSec = (j.status === 'done' && j.started && j.finished) ? Math.max(0, j.finished - j.started) : null;
   left.innerHTML = `
     <span class="hud-status lbl"><span class="lamp ${lamp}"></span><span>${statusLabel}</span></span>
     <span class="tc jnum">#${j.num ?? '—'}</span>
     <span class="chip ${j.workflow}">${esc(j.workflow)}</span>
     <span class="tc hint" id="hudRes">${w && h ? `${w}×${h}` : ''}</span>
-    ${j.lane ? `<span class="lbl hint">Lane ${esc(j.lane.toUpperCase())}</span>` : ''}`;
+    ${j.lane ? `<span class="lbl hint">Lane ${esc(j.lane.toUpperCase())}</span>` : ''}
+    ${renderSec !== null ? `<span class="tc hint" title="Total render time">Rendered in ${short(renderSec)}</span>` : ''}`;
   if (j.status === 'done') {
     const v = $('#vid');
     const curFrame = v ? Math.floor(v.currentTime * FPS) : 0;
@@ -3982,7 +3984,8 @@ function bin() {
       numEl.hidden = !j.num;
       numEl.textContent = j.num ? `#${j.num}` : '';
 
-      t.querySelector('.d').textContent = tc(j.frames || 124).slice(3);
+      const rt = (j.status === 'done' && j.started && j.finished) ? ` · ${short(Math.max(0, j.finished - j.started))}` : '';
+      t.querySelector('.d').textContent = tc(j.frames || 124).slice(3) + rt;
 
       const pb = t.querySelector('.pb');
       pb.hidden = !running;
