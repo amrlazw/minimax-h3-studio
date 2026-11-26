@@ -1,0 +1,3523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>H3 Studio</title>
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%230a0b0d'/><rect x='2' y='2' width='12' height='12' fill='none' stroke='%23ff2a1a' stroke-width='2'/><circle cx='8' cy='8' r='3' fill='%23ff2a1a'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* IRE ramp: the only neutrals on the page */
+  --i0:#0a0b0d;--i10:#131418;--i20:#1c1e22;--i30:#2a2c31;--i40:#3b3d43;--i50:#55575d;--i60:#74767b;--i70:#9a9b9f;--i80:#b8b9bb;--i90:#d6d6d4;--i100:#efeee9;
+  --onair:#ff2a1a;--onair-ink:#c41a0b;--onair-ink-hi:#a81507;--ready:#19c95b;--warm:#f0a020;--fault:#ff8a7a;
+  --t2va:#c8c800;--fl2va:#00c0c8;--ref2va:#c800c8;
+  --label:'Barlow Condensed',system-ui,sans-serif;
+  --tc:'JetBrains Mono',ui-monospace,monospace;
+  --prose:system-ui,-apple-system,'Segoe UI',sans-serif;
+  --g:16px;
+  --strip-h:48px;
+}
+*{box-sizing:border-box;margin:0}
+html{background:var(--i0);scrollbar-color:var(--i40) var(--i0);scroll-behavior:smooth}
+body{background:var(--i0);color:var(--i100);font:15px/1.5 var(--prose);min-height:100vh;caret-color:var(--onair)}
+::selection{background:var(--i90);color:var(--i0)}
+:focus-visible{outline:2px solid var(--i100);outline-offset:2px}
+button,input,select,textarea{font:inherit;color:inherit}
+[hidden]{display:none!important}
+
+.lbl{font-family:var(--label);font-weight:600;text-transform:uppercase;letter-spacing:.09em;font-size:13px;color:var(--i70)}
+.tc{font-family:var(--tc);font-variant-numeric:tabular-nums;font-weight:500}
+.lamp{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--i50);flex:none}
+.lamp.ready{background:var(--ready)}.lamp.onair{background:var(--onair)}.lamp.warm{background:var(--warm)}.lamp.off{background:transparent;border:1.5px solid var(--i70)}
+.chip{font:700 12px/1 var(--label);letter-spacing:.1em;text-transform:uppercase;padding:4px 7px;color:var(--i0);flex:none;display:inline-flex;align-items:center}
+.chip.t2va{background:var(--t2va)}.chip.fl2va{background:var(--fl2va)}.chip.ref2va{background:var(--ref2va);color:var(--i0)}
+.jnum{color:var(--i90);font-weight:700}
+svg.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* station strip */
+.strip{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px 20px;padding:8px var(--g);min-height:48px;background:var(--i10);border-bottom:1px solid var(--i30);flex-wrap:wrap}
+.strip h1{font:700 21px/1 var(--label);letter-spacing:.05em;text-transform:uppercase;color:var(--i100)}
+.strip .it{display:flex;align-items:center;gap:8px}
+.strip .lane{display:inline-flex;align-items:center;gap:6px;margin-right:12px}
+.strip .lane .lbl{font-size:11.5px;color:var(--i80)}
+.strip .gpu{margin-left:auto;display:flex;gap:14px;align-items:center;color:var(--i70);font-size:13px;flex-wrap:wrap}
+.gchip{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;color:var(--i80)}
+.gchip .gl{font:700 10px var(--label);letter-spacing:.1em;color:var(--i90);background:var(--i20);border:1px solid var(--i30);padding:2px 5px}
+.gchip .gbar{width:44px;height:4px;background:var(--i30);position:relative;overflow:hidden}
+.gchip .gbar i{position:absolute;left:0;top:0;bottom:0;background:var(--ready);transition:width .4s linear}
+.gchip.warm .gbar i{background:var(--warm)}.gchip.fault .gbar i{background:var(--onair)}.gchip.none{opacity:.55}
+.keybtn{background:var(--i20);border:1px solid var(--i40);padding:6px 11px;cursor:pointer;color:var(--i90)}
+.keybtn:hover{border-color:var(--i70);color:var(--i100)}
+
+/* mobile quick jump bar */
+.mob-nav{display:none}
+
+/* main desktop 2-column wall */
+.wall{display:grid;grid-template-columns:minmax(0,1fr) clamp(360px,29vw,430px);align-items:start}
+.program{padding:18px var(--g) 42px;display:flex;flex-direction:column;gap:18px;min-width:0}
+
+/* adaptive program monitor */
+.mon-stage{background:#000;border:1px solid var(--i30);display:flex;flex-direction:column}
+.mon-frame{position:relative;width:100%;aspect-ratio:var(--mon-ar,16 / 9);max-height:clamp(320px,58vh,620px);background:#000;overflow:hidden}
+.mon-frame.is-card{--mon-ar:16 / 9;min-height:260px}
+.mon-frame.is-portrait{width:min(100%,max(440px,calc(clamp(320px,58vh,620px) * var(--mon-ar,0.5625))));height:clamp(320px,58vh,620px);margin-inline:auto;border-inline:1px solid var(--i30)}
+.mon-frame.is-square{width:min(100%,clamp(320px,58vh,620px));margin-inline:auto;border-inline:1px solid var(--i30)}
+.mon-frame video,.mon-frame img.still{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.mon-frame .burn{position:absolute;top:12px;right:12px;background:rgba(10,11,13,.88);border:1px solid var(--i40);color:var(--i100);padding:4px 9px;font-size:13px;pointer-events:none;white-space:nowrap}
+.mon-frame .tally{position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:8px;background:rgba(10,11,13,.86);border:1px solid var(--i30);padding:5px 10px;color:var(--i100);pointer-events:none}
+.mon-frame .card{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:14px;text-align:center;padding:22px;color:var(--i80)}
+.mon-frame .card .big{font-size:clamp(26px,4.5vw,50px);color:var(--i100)}
+.mon-frame .card p{max-width:48ch}
+.mon-stage.cut .mon-frame{animation:cut .32s cubic-bezier(.16,1,.3,1)}
+@keyframes cut{0%{filter:brightness(0)}35%{filter:brightness(0)}100%{filter:none}}
+.bars{display:flex;height:8px;width:min(340px,70%)}.bars i{flex:1}
+.gate{display:flex;gap:10px;width:min(420px,92%)}.gate input{flex:1}
+
+.mon-hud{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:8px 12px;background:var(--i10);border-top:1px solid var(--i30);min-height:40px}
+.hud-group{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
+.hud-status{display:inline-flex;align-items:center;gap:7px;color:var(--i90)}
+.hud-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.hud-tc{font-size:13px;color:var(--i100)}
+.osd-btn{background:var(--i20);border:1px solid var(--i40);padding:4px 8px;font:600 11px/1 var(--label);letter-spacing:.09em;text-transform:uppercase;color:var(--i70);cursor:pointer}
+.osd-btn:hover{border-color:var(--i70);color:var(--i100)}
+.osd-btn[aria-pressed=true]{background:var(--i100);border-color:var(--i100);color:var(--i0)}
+
+/* progress inside monitor */
+.prog{display:flex;flex-direction:column;gap:10px;width:min(480px,94%)}
+.prog .row{display:flex;justify-content:space-between;gap:14px;font-size:13px;color:var(--i80)}
+.bar{position:relative;height:6px;background:var(--i30);overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--onair);transition:width .5s linear}
+.bar.indet i{width:34%!important;animation:slide 1.5s ease-in-out infinite}
+@keyframes slide{0%{left:-34%}100%{left:100%}}
+
+/* compact clip slate */
+.slate{display:flex;flex-direction:column;gap:11px;padding-bottom:4px}
+.slate-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.slate-title-wrap{display:flex;align-items:baseline;gap:10px;flex:1;min-width:220px}
+.slate h2{font:600 clamp(20px,2.1vw,26px)/1.2 var(--label);letter-spacing:.01em;text-wrap:balance;overflow-wrap:anywhere}
+.slate h2.struck{text-decoration:line-through;text-decoration-color:var(--fault);color:var(--i70)}
+.slate-inline{display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap}
+.slate-inline input[type=text]{width:min(420px,100%);padding:6px 10px;font-size:14px}
+.slate-folder-box{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.facts{display:flex;flex-wrap:wrap;gap:6px 20px;align-items:center;color:var(--i80);font-size:13.5px}
+.facts span{display:inline-flex;gap:6px;align-items:baseline}
+.facts .lbl{font-size:11.5px}
+.err{color:var(--fault);overflow-wrap:anywhere;white-space:pre-wrap;font-family:var(--tc);font-size:12.5px;line-height:1.5;background:#1d0d0b;border:1px solid #4e221d;padding:10px 12px}
+
+.tabs{display:flex;border-bottom:1px solid var(--i30);margin-top:2px}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:7px 14px 8px;font:600 12px var(--label);letter-spacing:.1em;text-transform:uppercase;color:var(--i70);cursor:pointer}
+.tab:hover{color:var(--i100)}
+.tab[aria-selected=true]{color:var(--i100);border-bottom-color:var(--onair)}
+.tab:disabled{opacity:.42;cursor:not-allowed}
+.panel{padding-top:10px}
+.slate-prompt-box{background:var(--i10);border:1px solid var(--i30);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.slate-prompt-text{font:14.5px/1.6 var(--prose);color:var(--i90);white-space:pre-wrap;overflow-wrap:anywhere;max-width:74ch}
+.slate-prompt-text.is-clamped{max-height:152px;overflow:hidden;position:relative}
+.slate-prompt-text.is-clamped::after{content:'';position:absolute;inset:auto 0 0 0;height:36px;background:linear-gradient(transparent,var(--i10));pointer-events:none}
+.slate-prompt-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.slate-edit-area{min-height:150px;font:14px/1.55 var(--prose)}
+
+.inputs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.inputs figure{display:flex;flex-direction:column;gap:7px;background:var(--i10);border:1px solid var(--i30);padding:8px}
+.inputs img,.inputs video{display:block;width:100%;height:112px;object-fit:cover;border:1px solid var(--i30);background:#000}
+.inputs audio{width:100%;height:36px}
+.inputs figcaption{font-size:12px;color:var(--i80);overflow-wrap:anywhere;display:flex;flex-direction:column;gap:4px}
+.inp-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+/* New Job Console Deck (left column below video/slate) */
+.compose-panel{background:var(--i10);border:1px solid var(--i30);display:flex;flex-direction:column}
+.compose-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--i30);flex-wrap:wrap}
+.compose-head h2{font:700 17px/1 var(--label);letter-spacing:.08em;text-transform:uppercase;color:var(--i100)}
+.compose-summary{font-size:12.5px;color:var(--i70);margin-right:auto}
+.compose-head-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+.compose-body{padding:16px;display:flex;flex-direction:column;gap:16px}
+.compose-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+.compose-col{display:flex;flex-direction:column;gap:12px;min-width:0}
+
+/* cursor tag toolbar */
+.tagbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;background:var(--i0);border:1px solid var(--i30)}
+.tagbar-grp{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.tagbar-sep{width:1px;height:18px;background:var(--i30);margin:0 2px}
+.tchip{background:var(--i20);border:1px solid var(--i40);padding:4px 8px;font:600 11.5px/1.1 var(--tc);color:var(--i90);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.tchip:hover{border-color:var(--i80);color:var(--i100);background:var(--i30)}
+.tchip.is-linked{border-color:var(--ready);color:var(--ready)}
+.tchip.is-unlinked{border-color:var(--warm);color:var(--warm)}
+.tchip.is-ghost{border-style:dashed;border-color:var(--i50);color:var(--i80)}
+.tchip.is-struct{font-family:var(--tc);color:var(--i80)}
+.tchip.is-bind{background:var(--i20);border-color:var(--fl2va);color:var(--fl2va);font-family:var(--label);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.tchip.is-bind:hover{background:var(--fl2va);color:var(--i0)}
+
+/* prompt + diagnostics */
+textarea,input[type=text],input[type=password],input[type=number],select{width:100%;background:var(--i0);border:1px solid var(--i40);padding:9px 11px;border-radius:0;color:var(--i100)}
+textarea{min-height:200px;resize:vertical;line-height:1.55;font-family:var(--prose)}
+textarea::placeholder,input::placeholder{color:var(--i70)}
+textarea:hover,input:hover,select:hover{border-color:var(--i60)}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--i80) 50%),linear-gradient(135deg,var(--i80) 50%,transparent 50%);background-position:calc(100% - 17px) 55%,calc(100% - 12px) 55%;background-size:5px 5px;background-repeat:no-repeat;padding-right:30px}
+.prompt-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.diag-strip{display:flex;flex-direction:column;gap:6px}
+.diag-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;background:var(--i0);border:1px solid var(--i30);font-size:12.5px;line-height:1.35;color:var(--i80);flex-wrap:wrap}
+.diag-item.is-err{border-color:var(--fault);color:var(--fault)}
+.diag-item.is-warn{border-color:var(--warm);color:var(--warm)}
+.diag-item.is-ok{border-color:#1e5633;color:var(--ready)}
+.diag-msg{display:flex;align-items:center;gap:7px;flex:1;min-width:180px}
+.diag-acts{display:flex;gap:6px;flex-wrap:wrap}
+
+/* reattach banner & mode switch bar */
+.reattach{background:var(--i0);border:1px solid var(--warm);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.reattach-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.reattach-list{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--i80)}
+.reattach-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.reattach-row.is-done{color:var(--ready)}
+.mode-switch-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--i0);border:1px solid var(--i40);font-size:12.5px;color:var(--i80);flex-wrap:wrap}
+
+/* drops & ref cards */
+.field{display:flex;flex-direction:column;gap:6px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.drop{position:relative;border:1px dashed var(--i50);background:var(--i0);padding:10px 12px;display:flex;align-items:center;gap:10px;color:var(--i80);font-size:13.5px;cursor:pointer;min-height:52px}
+.drop:hover,.drop:focus-within,.drop.is-over{border-color:var(--i100);color:var(--i100);background:var(--i20)}
+.drop.is-over{border-style:solid}
+.drop.is-muted{opacity:.55}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop img{height:38px;width:54px;object-fit:cover;border:1px solid var(--i30);flex:none}
+.drop .dname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.drop .x{margin-left:auto;position:relative;z-index:2}
+.counts{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--i70)}
+.counts b{color:var(--i100);font-weight:600}
+
+.swap-banner{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--i0);border:1px solid var(--fl2va);font-size:12.5px;color:var(--i90);flex-wrap:wrap}
+.reflist{display:flex;flex-direction:column;gap:8px}
+.refcard{background:var(--i0);border:1px solid var(--i30);padding:9px 10px;display:flex;flex-direction:column;gap:8px}
+.refcard.is-dragging{opacity:.45}
+.refcard.is-dragover{border-color:var(--i100)}
+.refcard.is-ghost{border-style:dashed;border-color:var(--fault);background:#170d0d}
+.ref-top{display:flex;align-items:center;gap:8px}
+.ref-grip{color:var(--i70);cursor:grab;display:inline-flex;align-items:center;padding:2px;flex:none}
+.ref-thumb{width:46px;height:36px;background:var(--i10);border:1px solid var(--i30);display:grid;place-items:center;overflow:hidden;flex:none;color:var(--i70)}
+.ref-thumb img,.ref-thumb video{width:100%;height:100%;object-fit:cover;display:block}
+.ref-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.ref-tags{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.rtag{font:700 11px/1 var(--tc);padding:3px 6px;border:1px solid var(--i40);background:var(--i10);color:var(--i90)}
+.rtag.is-linked{border-color:var(--ready);color:var(--ready)}
+.rtag.is-unlinked{border-color:var(--warm);color:var(--warm)}
+.rtag.is-missing{border-color:var(--fault);color:var(--fault)}
+.rtag.is-audio-unknown{border-color:var(--warm);color:var(--warm)}
+.ref-name{font-size:13px;color:var(--i100);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ref-meta{font:500 11px/1.3 var(--tc);color:var(--i70)}
+.ref-move{display:flex;gap:3px;flex:none}
+.ref-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;align-items:end}
+.ref-ctl{display:flex;flex-direction:column;gap:3px}
+.ref-ctl .lbl{font-size:10.5px;letter-spacing:.08em}
+.ref-ctl select,.ref-ctl input{padding:5px 8px;font-size:12px}
+.ref-ctl select{padding-right:24px;background-position:calc(100% - 12px) 55%,calc(100% - 7px) 55%}
+.ref-trim-row{display:flex;align-items:end;gap:6px;flex-wrap:wrap;padding-top:2px}
+.ref-trim-field{display:flex;flex-direction:column;gap:3px;width:82px}
+.ref-trim-field .lbl{font-size:10.5px}
+.ref-trim-field input{padding:5px 7px;font-size:12px}
+.ref-warn{font-size:12px;color:var(--warm);line-height:1.35}
+.ref-err{font-size:12px;color:var(--fault);line-height:1.35}
+
+/* render parameters strip */
+.params-strip{border-top:1px solid var(--i30);padding-top:14px;display:flex;flex-direction:column;gap:12px}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--i40)}
+.seg button{background:var(--i0);border:0;border-right:1px solid var(--i40);padding:8px 6px;font:600 12px/1.2 var(--label);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--i70)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--i100);color:var(--i0)}
+.seg button:hover{color:var(--i100)}.seg button[aria-pressed=true]:hover{color:var(--i0)}
+.seg small{display:block;font:500 10.5px var(--tc);letter-spacing:0;opacity:.85;margin-top:3px}
+.params-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:12px}
+.params-grid select,.params-grid input{font-size:13px}
+.params-grid select{padding:8px 26px 8px 10px;background-position:calc(100% - 14px) 55%,calc(100% - 9px) 55%}
+.with{display:flex}.with input{flex:1;min-width:0}.with .btn{border-left:0}
+.adv-box{border:1px solid var(--i30);background:var(--i0)}
+.adv-box summary{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none}
+.adv-box summary::-webkit-details-marker{display:none}
+.adv-box[open] summary{border-bottom:1px solid var(--i30)}
+.adv-inner{padding:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.compose-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:4px}
+.compose-foot-left{display:flex;flex-direction:column;gap:4px;flex:1;min-width:220px}
+.msg{font-size:13.5px;min-height:20px;color:var(--i80)}.msg.bad{color:var(--fault)}
+.go{background:var(--onair-ink);border:0;color:#fff;padding:13px 26px;font:700 17px var(--label);letter-spacing:.14em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:10px;min-width:190px}
+.go:hover{background:var(--onair-ink-hi)}
+.go:disabled{background:var(--i40);color:var(--i80);cursor:wait}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--i20);border:1px solid var(--i40);padding:8px 12px;cursor:pointer;font:600 13px/1 var(--label);letter-spacing:.09em;text-transform:uppercase;color:var(--i100);text-decoration:none}
+.btn:hover{background:var(--i30);border-color:var(--i70)}
+.btn.sm{padding:5px 9px;font-size:11.5px;letter-spacing:.08em}
+.btn.icon{padding:7px 9px}
+.btn.icon.sm{padding:4px 6px}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.danger:hover{background:#3a1512;border-color:var(--fault);color:var(--fault)}
+.btn[aria-pressed=true]{background:var(--i100);border-color:var(--i100);color:var(--i0)}
+.sortsel{background:var(--i0);border:1px solid var(--i40);padding:6px 28px 6px 9px;font:600 11.5px var(--label);letter-spacing:.08em;text-transform:uppercase;color:var(--i90);cursor:pointer;width:auto}
+
+/* Right Sticky Sidebar: Clip Bin */
+.bin-rail{position:sticky;top:var(--strip-h,48px);height:calc(100vh - var(--strip-h,48px));display:flex;flex-direction:column;overflow:hidden;background:var(--i10);border-left:1px solid var(--i30)}
+.bin-head{padding:14px 14px 10px;border-bottom:1px solid var(--i30);display:flex;flex-direction:column;gap:9px;flex:none;background:var(--i10)}
+.bin-title-row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.bin-title-left{display:flex;align-items:baseline;gap:10px}
+.bin-title-left h2{font:700 16px/1 var(--label);letter-spacing:.08em;text-transform:uppercase;color:var(--i100)}
+.bin-tools{display:flex;align-items:center;gap:6px}
+.view-toggle{display:inline-flex;border:1px solid var(--i40)}
+.view-toggle button{background:var(--i0);border:0;border-right:1px solid var(--i40);padding:5px 7px;color:var(--i70);cursor:pointer;display:inline-flex;align-items:center}
+.view-toggle button:last-child{border-right:0}
+.view-toggle button:hover{color:var(--i100)}
+.view-toggle button[aria-pressed=true]{background:var(--i100);color:var(--i0)}
+.bin-search-row{display:flex;gap:6px;align-items:center}
+.search-wrap{position:relative;flex:1;display:flex;align-items:center}
+.search-wrap .s-ic{position:absolute;left:9px;color:var(--i70);pointer-events:none}
+.search-wrap input{padding:6px 28px 6px 29px;font-size:13px}
+.search-clear{position:absolute;right:4px;background:none;border:0;color:var(--i70);cursor:pointer;padding:4px;display:inline-flex}
+.search-clear:hover{color:var(--i100)}
+.bin-filter-row{display:flex;gap:5px;flex-wrap:wrap}
+.folders{display:flex;gap:5px;flex-wrap:wrap}
+.fchip{background:var(--i0);border:1px solid var(--i30);padding:4px 8px;font:600 11px/1.1 var(--label);letter-spacing:.08em;text-transform:uppercase;color:var(--i70);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.fchip:hover{border-color:var(--i70);color:var(--i100)}
+.fchip[aria-pressed=true]{background:var(--i100);border-color:var(--i100);color:var(--i0)}
+.fchip small{font:500 10px var(--tc);opacity:.85}
+.fchip.drop{border-style:dashed}
+.fchip.drop[data-over=true]{border-color:var(--onair);color:var(--onair)}
+.batch-bar{display:flex;flex-direction:column;gap:7px;padding:8px;background:var(--i0);border:1px solid var(--i40)}
+.batch-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:space-between}
+
+.bin-scroll{flex:1;overflow-y:auto;padding:12px 14px 24px}
+.bin{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.bin.is-list{grid-template-columns:1fr;gap:7px}
+.tile{background:var(--i0);border:1px solid var(--i30);text-align:left;padding:0;cursor:pointer;display:flex;flex-direction:column;min-width:0;position:relative}
+.tile:hover{border-color:var(--i70)}
+.tile[aria-current=true]{border-color:var(--i100);outline:1px solid var(--i100)}
+.tile.is-selected{border-color:var(--fl2va);outline:1px solid var(--fl2va)}
+.tile[draggable=true]{cursor:grab}
+.tile .th{position:relative;aspect-ratio:16/9;background:#000;overflow:hidden;width:100%}
+.tile .th .media-slot{position:absolute;inset:0;display:block}
+.tile .th video,.tile .th img{width:100%;height:100%;object-fit:cover;display:block}
+.tile .th .st{position:absolute;inset:0;display:grid;place-content:center;font:600 12px var(--label);letter-spacing:.12em;text-transform:uppercase;color:var(--i80)}
+.tile .th .d{position:absolute;right:5px;bottom:5px;background:#000;color:#fff;padding:2px 5px;font-size:11px}
+.tile .th .n{position:absolute;right:5px;top:5px;background:rgba(0,0,0,.85);color:var(--i90);padding:2px 5px;font-size:11px;letter-spacing:.04em}
+.tile .th .lamp{position:absolute;left:7px;top:7px}
+.tile .th .sel-box{position:absolute;left:6px;bottom:6px;width:18px;height:18px;background:var(--i0);border:1px solid var(--i70);display:grid;place-items:center;color:var(--i0)}
+.tile.is-selected .th .sel-box{background:var(--fl2va);border-color:var(--fl2va)}
+.tile .th .pb{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--i40)}
+.tile .th .pb i{display:block;height:100%;background:var(--onair);transition:width .5s linear}
+.tile .cap{display:flex;gap:6px;align-items:flex-start;justify-content:space-between;padding:8px 9px 9px;min-width:0}
+.tile .cap-text{font-size:12.5px;line-height:1.35;color:var(--i90);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;flex:1;min-width:0}
+.tile.queued .th{opacity:.62}
+.tile.error .cap-text,.tile.cancelled .cap-text{text-decoration:line-through;text-decoration-color:var(--fault);color:var(--i70)}
+
+/* compact list view tile */
+.bin.is-list .tile{flex-direction:row;align-items:stretch}
+.bin.is-list .tile .th{width:104px;flex:none;aspect-ratio:16/9}
+.bin.is-list .tile .cap{flex:1;flex-direction:column;justify-content:center;gap:5px;padding:6px 10px}
+.bin.is-list .tile .cap-text{-webkit-line-clamp:1}
+
+.bin-empty{border:1px dashed var(--i40);background:var(--i0);padding:18px 14px;display:flex;flex-direction:column;gap:10px;align-items:flex-start;color:var(--i80);font-size:13px}
+
+/* dialogs */
+dialog{border:1px solid var(--i30);background:var(--i10);color:var(--i100);padding:0;width:min(1000px,94vw);max-height:88vh;margin:auto}
+dialog::backdrop{background:rgba(0,0,0,.74)}
+dialog.confirm-dlg{width:min(460px,92vw)}
+.dlg{display:flex;flex-direction:column;max-height:88vh}
+.dlg .top{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--i30)}
+.dlg .top h2{font:700 18px/1 var(--label);letter-spacing:.06em;text-transform:uppercase}
+.dlg .top .hint{margin-left:auto}
+.dlg .body{overflow:auto;padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start}
+.dlg .body .span2{grid-column:1/-1}
+.dlg .foot{display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--i30);align-items:center;flex-wrap:wrap}
+.dlg .foot .hint{margin-right:auto}
+.confirm-body{padding:18px;display:flex;flex-direction:column;gap:8px;color:var(--i90);font-size:14.5px;line-height:1.5}
+pre.prev{white-space:pre-wrap;word-break:break-word;font:12.5px/1.6 var(--tc);background:var(--i0);border:1px solid var(--i30);padding:12px;max-height:280px;overflow:auto;color:var(--i90)}
+.shot{border:1px solid var(--i30);padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--i0)}
+.shot .sh{display:flex;align-items:center;gap:8px}
+.shot .sh .lbl{color:var(--i100)}
+.shot .sh .btn{margin-left:auto;padding:5px 9px}
+.hint{font-size:12px;color:var(--i70);line-height:1.45}
+.hint kbd{font:500 11px var(--tc);border:1px solid var(--i40);padding:1px 4px;color:var(--i90)}
+.chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--i90);cursor:pointer}
+.chk input{width:auto;accent-color:var(--onair)}
+
+footer{border-top:1px solid var(--i30);padding:16px var(--g) 28px;color:var(--i70);font-size:12px;display:flex;gap:8px 22px;flex-wrap:wrap;align-items:baseline}
+footer b{color:var(--i90);font-weight:600}
+footer a{color:var(--i80)}
+
+@media (max-width:960px){
+  .strip{position:static;gap:8px 14px;padding:10px var(--g)}
+  .strip .gpu{margin-left:0;width:100%;order:9}
+  .mob-nav{display:grid;grid-template-columns:repeat(3,1fr);position:sticky;top:0;z-index:25;background:var(--i10);border-bottom:1px solid var(--i30)}
+  .mob-nav a{display:flex;align-items:center;justify-content:center;padding:10px 8px;text-decoration:none;font:700 13px/1 var(--label);letter-spacing:.1em;text-transform:uppercase;color:var(--i70);border-right:1px solid var(--i30);border-bottom:2px solid transparent}
+  .mob-nav a:last-child{border-right:0}
+  .mob-nav a[aria-current=true]{color:var(--i100);border-bottom-color:var(--onair);background:var(--i20)}
+  .wall{grid-template-columns:1fr}
+  .program{padding:14px var(--g) 24px}
+  .mon-frame.is-portrait{width:100%;border-inline:0}
+  .compose-grid,.row2{grid-template-columns:1fr}
+  .seg{grid-template-columns:1fr 1fr}
+  .seg button{border-bottom:1px solid var(--i40)}
+  .seg button:nth-child(2){border-right:0}
+  .seg button:nth-child(3),.seg button:nth-child(4){border-bottom:0}
+  .bin-rail{position:static;height:auto;border-left:0;border-top:1px solid var(--i30);overflow:visible}
+  .bin-scroll{overflow:visible}
+  .bin{grid-template-columns:repeat(auto-fill,minmax(152px,1fr))}
+  .dlg .body{grid-template-columns:1fr}
+  .dlg .body .span2{grid-column:auto}
+}
+@media (prefers-reduced-motion:reduce){.mon-stage.cut .mon-frame{animation:none}.bar i{transition:none}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></symbol>
+  <symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/><circle cx="9" cy="9" r=".9" fill="currentColor"/><circle cx="15" cy="15" r=".9" fill="currentColor"/><circle cx="15" cy="9" r=".9" fill="currentColor"/><circle cx="9" cy="15" r=".9" fill="currentColor"/></symbol>
+  <symbol id="i-add" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-reuse" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15m0 5v-5h5"/></symbol>
+  <symbol id="i-magic" viewBox="0 0 24 24"><path d="m4 20 10-10M14 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM18 12l.7 1.3L20 14l-1.3.7L18 16l-.7-1.3L16 14l1.3-.7z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1"/><path d="M15 5H5v10"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="m4 20 4-1 10-10-3-3L5 16z"/><path d="m14 6 3 3"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.2" fill="currentColor"/><circle cx="15" cy="6" r="1.2" fill="currentColor"/><circle cx="9" cy="12" r="1.2" fill="currentColor"/><circle cx="15" cy="12" r="1.2" fill="currentColor"/><circle cx="9" cy="18" r="1.2" fill="currentColor"/><circle cx="15" cy="18" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4 3 20h18z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-audio" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12"/><path d="m16 10 5-3v10l-5-3z"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 16-5-5-6 6-2-2-5 4"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7.1 0l2.4-2.4a5 5 0 0 0-7.1-7.1L11 5.9"/><path d="M14 10a5 5 0 0 0-7.1 0L4.5 12.4a5 5 0 0 0 7.1 7.1L13 18.1"/></symbol>
+</svg>
+
+<header class="strip" id="strip">
+  <h1>H3 Studio</h1>
+  <span class="it lbl">Inwin · local GPUs</span>
+  <span class="it lbl" id="sModel"><span class="lamp off"></span><span>Not connected</span></span>
+  <span class="it lbl"><span class="lamp onair" id="sAirLamp" hidden></span><span id="sAir">Idle</span></span>
+  <span class="it lbl" id="sQueue">Queued 0</span>
+  <span class="gpu tc" id="sGpu"></span>
+  <button class="keybtn lbl" id="keyBtn" type="button">API key</button>
+</header>
+
+<nav class="mob-nav" id="mobNav" aria-label="Studio sections">
+  <a href="#monStage" data-jump="monStage" aria-current="true">Monitor</a>
+  <a href="#composePanel" data-jump="composePanel">New job</a>
+  <a href="#binRail" data-jump="binRail">Clips</a>
+</nav>
+
+<div class="wall">
+  <main class="program">
+    <section class="mon-stage" id="monStage" aria-label="Program monitor">
+      <div class="mon-frame is-card" id="monFrame" aria-live="polite"></div>
+      <div class="mon-hud" id="monHud">
+        <div class="hud-group" id="hudLeft">
+          <span class="hud-status lbl"><span class="lamp off"></span><span>Standby</span></span>
+        </div>
+        <div class="hud-right">
+          <span class="hud-tc tc" id="hudTc">00:00:00:00</span>
+          <button class="osd-btn" type="button" id="osdToggle" aria-pressed="false" title="Toggle overlay burn-in on video">OSD</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="slate" id="slate" aria-label="Clip details"></section>
+
+    <form class="compose-panel" id="compose" novalidate>
+      <div class="compose-head" id="composePanel">
+        <h2>New job</h2>
+        <span class="chip t2va" id="wfBadge">t2va</span>
+        <span class="compose-summary" id="composeSummary"></span>
+        <div class="compose-head-acts">
+          <button class="btn sm" type="button" id="composeToggle" aria-expanded="true">Collapse</button>
+          <button class="btn sm" type="button" id="pPolish" hidden><svg class="ic"><use href="#i-magic"/></svg>Polish</button>
+          <button class="btn sm" type="button" id="craft"><svg class="ic"><use href="#i-magic"/></svg>Builder</button>
+          <button class="btn sm" type="button" id="resetCompose">Reset</button>
+        </div>
+      </div>
+
+      <div class="compose-body" id="composeBody">
+        <div class="compose-grid">
+          <div class="compose-col">
+            <div class="field">
+              <label class="lbl" for="prompt">Prompt</label>
+              <div class="tagbar" id="tagBar" aria-label="Prompt tag insertion bar"></div>
+              <textarea id="prompt" name="prompt" required maxlength="20000" placeholder="Describe the shot, the action and the sound. Reference attached files with &lt;Picture 1&gt;, &lt;Video 1&gt;, &lt;Audio 1&gt; — or open the Builder."></textarea>
+              <div class="prompt-foot">
+                <div class="hint" id="pcount">0 / 20,000 characters</div>
+              </div>
+              <div class="diag-strip" id="linkDiag" aria-live="polite"></div>
+            </div>
+          </div>
+
+          <div class="compose-col">
+            <div class="reattach" id="reattachBanner" hidden></div>
+
+            <div class="field">
+              <span class="lbl">First and last frame <span class="hint">(fl2va)</span></span>
+              <div class="mode-switch-bar" id="kfSwitchBar" hidden>
+                <span>References active (<span class="tc">ref2va</span>) — clear references to use First / Last frame.</span>
+                <button class="btn sm" type="button" id="clearRefsForKf">Clear refs</button>
+              </div>
+              <div class="row2" id="kfDrops">
+                <label class="drop" data-slot="image"><svg class="ic"><use href="#i-add"/></svg><span class="dname">First frame</span><input type="file" name="image" accept="image/*" aria-label="First frame image"></label>
+                <label class="drop" data-slot="last_image"><svg class="ic"><use href="#i-add"/></svg><span class="dname">Last frame</span><input type="file" name="last_image" accept="image/*" aria-label="Last frame image"></label>
+              </div>
+            </div>
+
+            <div class="field">
+              <span class="lbl">References &amp; slot linker <span class="hint">(ref2va)</span></span>
+              <div class="mode-switch-bar" id="refSwitchBar" hidden>
+                <span>Keyframes active (<span class="tc">fl2va</span>) — clear keyframes to attach references.</span>
+                <button class="btn sm" type="button" id="clearKfForRefs">Clear keyframes</button>
+              </div>
+              <label class="drop" data-slot="references" id="refDropzone"><svg class="ic"><use href="#i-add"/></svg><span class="dname">Drop or add images, videos or audio</span><input type="file" id="refs" name="references" multiple accept="image/*,video/*,audio/*" aria-label="Reference files"></label>
+              <div class="counts"><span>Images <b id="cImg">0</b>/9</span><span>Videos <b id="cVid">0</b>/3</span><span>Audio <b id="cAud">0</b>/3</span><span>Total <b id="cAll">0</b>/12</span></div>
+              <div class="swap-banner" id="swapBanner" hidden></div>
+              <div class="reflist" id="refList"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="params-strip">
+          <div class="field">
+            <span class="lbl">Quality</span>
+            <div class="seg" id="segSteps" role="group" aria-label="Denoising steps">
+              <button type="button" data-steps="8" aria-pressed="true">Draft 8<small id="t8"></small></button>
+              <button type="button" data-steps="12" aria-pressed="false">Standard 12<small id="t12"></small></button>
+              <button type="button" data-steps="25" aria-pressed="false">Fine 25<small id="t25"></small></button>
+              <button type="button" data-steps="50" aria-pressed="false">Reference 50<small id="t50"></small></button>
+            </div>
+            <input type="hidden" id="steps" name="steps" value="8">
+            <div class="hint" id="stepsHint"></div>
+          </div>
+
+          <div class="params-grid">
+            <div class="field">
+              <label class="lbl" for="frames">Length</label>
+              <select id="frames" name="frames" class="tc"></select>
+              <div class="hint" id="lenHint"></div>
+            </div>
+            <div class="field">
+              <label class="lbl" for="aspect">Aspect</label>
+              <select id="aspect" name="aspect" class="tc">
+                <option value="auto">Auto · match ref</option>
+                <option value="16:9">16:9 · 1344×768</option>
+                <option value="9:16">9:16 · 768×1344</option>
+                <option value="4:3">4:3 · 1024×768</option>
+                <option value="3:4">3:4 · 768×1024</option>
+                <option value="1:1">1:1 · 1024×1024</option>
+                <option value="21:9">21:9 · 1568×672</option>
+              </select>
+              <div class="hint" id="aspectHint">Auto matches ref video or keyframe.</div>
+            </div>
+            <div class="field">
+              <label class="lbl" for="seed">Seed</label>
+              <div class="with">
+                <input id="seed" name="seed" type="number" min="-1" placeholder="random" class="tc">
+                <button class="btn icon" type="button" id="dice" aria-label="Random seed"><svg class="ic"><use href="#i-dice"/></svg></button>
+              </div>
+              <div class="hint">Blank picks a random seed.</div>
+            </div>
+            <div class="field">
+              <label class="lbl" for="audio_mode">Audio level</label>
+              <select id="audio_mode" name="audio_mode">
+                <option value="raw">As generated</option>
+                <option value="peak">Normalise to −1 dBFS</option>
+              </select>
+              <div class="hint" id="audioHint">Measured peak shown after render.</div>
+            </div>
+            <div class="field">
+              <label class="lbl" for="pin">Lane</label>
+              <select id="pin" name="pin">
+                <option value="">Auto · free lane</option>
+                <option value="a">A · GPU 0</option>
+                <option value="b">B · GPU 1</option>
+              </select>
+              <div class="hint">Pin a job to one lane.</div>
+            </div>
+          </div>
+
+          <details class="adv-box" id="advBox">
+            <summary class="lbl"><span>Advanced</span><span class="hint">Reference image detail</span></summary>
+            <div class="adv-inner">
+              <div class="field">
+                <label class="lbl" for="refShortEdge">Ref image detail</label>
+                <select id="refShortEdge" name="ref_short_edge" class="tc">
+                  <option value="2048">2048px (Default)</option>
+                  <option value="1536">1536px (Balanced)</option>
+                  <option value="1024">1024px (Fast)</option>
+                </select>
+                <div class="hint">Short-edge resolution sent for reference images in ref2va.</div>
+              </div>
+            </div>
+          </details>
+
+          <div class="compose-foot">
+            <div class="compose-foot-left">
+              <p class="msg" id="msg" role="status"></p>
+              <p class="hint">Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to queue. Two jobs render at once, one per lane.</p>
+            </div>
+            <button class="go" id="go" type="submit">Generate</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </main>
+
+  <aside class="bin-rail" id="binRail" aria-label="Generated clips sidebar">
+    <div class="bin-head">
+      <div class="bin-title-row">
+        <div class="bin-title-left">
+          <h2>Clip bin</h2>
+          <span class="lbl" id="binCount"></span>
+        </div>
+        <div class="bin-tools">
+          <button class="btn sm" type="button" id="selectMode" aria-pressed="false">Select</button>
+          <div class="view-toggle" id="viewMode" role="group" aria-label="Bin layout">
+            <button type="button" data-view="grid" aria-pressed="true" aria-label="Grid view" title="Grid view"><svg class="ic"><use href="#i-grid"/></svg></button>
+            <button type="button" data-view="list" aria-pressed="false" aria-label="List view" title="List view"><svg class="ic"><use href="#i-list"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bin-search-row">
+        <div class="search-wrap">
+          <svg class="ic s-ic" aria-hidden="true"><use href="#i-search"/></svg>
+          <input type="text" id="binSearch" placeholder="Search #num, title, prompt…" aria-label="Search clips">
+          <button type="button" class="search-clear" id="binSearchClear" aria-label="Clear search" hidden><svg class="ic"><use href="#i-x"/></svg></button>
+        </div>
+        <select class="sortsel" id="sortBy" aria-label="Sort clips">
+          <option value="newest">Newest</option>
+          <option value="num">By #num</option>
+          <option value="oldest">Oldest</option>
+          <option value="longest">Longest</option>
+          <option value="shortest">Shortest</option>
+          <option value="steps">Most steps</option>
+          <option value="name">Name</option>
+        </select>
+      </div>
+
+      <div class="batch-bar" id="batchBar" hidden>
+        <div class="batch-row">
+          <span class="lbl" id="batchCount">0 selected</span>
+          <div style="display:flex;gap:5px">
+            <button class="btn sm" type="button" id="batchAll">All</button>
+            <button class="btn sm" type="button" id="batchNone">None</button>
+          </div>
+        </div>
+        <div class="batch-row">
+          <select class="sortsel" id="batchFolder" aria-label="Move selected clips to folder" style="flex:1">
+            <option value="">Move to folder…</option>
+          </select>
+          <button class="btn sm danger" type="button" id="batchDel"><svg class="ic"><use href="#i-trash"/></svg>Delete</button>
+        </div>
+        <div class="batch-row" id="batchFoldNewWrap" hidden>
+          <input type="text" id="batchFoldNew" placeholder="New folder name" aria-label="New folder name for selected clips" style="flex:1;padding:5px 8px;font-size:12.5px">
+          <button class="btn sm" type="button" id="batchFoldApply">Apply</button>
+          <button class="btn sm" type="button" id="batchFoldCancel">Cancel</button>
+        </div>
+      </div>
+
+      <div class="bin-filter-row" id="wfFilters" role="group" aria-label="Filter by workflow or status"></div>
+      <div class="folders" id="folders" aria-label="Filter by folder"></div>
+    </div>
+
+    <div class="bin-scroll">
+      <div class="bin" id="bin"></div>
+      <div class="bin-empty" id="binEmpty" hidden></div>
+    </div>
+  </aside>
+</div>
+
+<footer>
+  <span><b>MiniMax H3</b> · open weights, community licence</span>
+  <span>Commercial use of local output needs a licence from Comfy (official reseller). Excluded territories include the US, EU, UK and South Korea.</span>
+  <span>
+    <a href="https://docs.comfy.org/tutorials/video/minimax/minimax-h3" target="_blank" rel="noopener">ComfyUI H3 guide</a> ·
+    <a href="https://huggingface.co/Comfy-Org/MiniMax-H3" target="_blank" rel="noopener">workflows &amp; weights</a> ·
+    <a href="https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE" target="_blank" rel="noopener">licence text</a>
+  </span>
+  <span>Two lanes on Inwin · RTX 5090 ×2 · <span class="tc" id="ver"></span></span>
+</footer>
+
+<dialog id="dlg">
+  <form class="dlg" id="builder" method="dialog" novalidate>
+    <div class="top">
+      <h2>Prompt builder</h2>
+      <span class="chip" id="bMode">t2va</span>
+      <span class="hint">Follows MiniMax's own writing guide. Empty fields are dropped.</span>
+      <button class="btn icon" type="button" id="bClose" aria-label="Close builder"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="body">
+      <div class="field span2"><label class="lbl" for="bStyle">Style</label>
+        <select id="bStyle">
+          <option value="Live-action, cinematic">Live-action, cinematic</option>
+          <option value="Live-action, documentary">Live-action, documentary</option>
+          <option value="Live-action, handheld, natural light">Live-action, handheld, natural light</option>
+          <option value="3D CG, cinematic">3D CG, cinematic</option>
+          <option value="2D-animated, cel-shaded">2D-animated, cel-shaded</option>
+          <option value="Claymation">Claymation</option>
+          <option value="Watercolor animation">Watercolor animation</option>
+          <option value="Vintage film, 16mm grain">Vintage film, 16mm grain</option>
+        </select></div>
+
+      <div class="field span2"><label class="lbl" for="bIntent">What are you making?</label>
+        <select id="bIntent">
+          <option value="scene">A scene · no reference person</option>
+          <option value="person">A specific person · from photos</option>
+          <option value="recreate">Recreate video · replace person (&lt;Picture&gt; + &lt;Video&gt;)</option>
+          <option value="product">A product or object · from photos</option>
+        </select>
+        <div class="hint" id="bIntentHint"></div></div>
+
+      <div class="field span2"><label class="lbl" for="bScene">Scene and subject <span class="hint">who, where, what it looks like</span></label>
+        <textarea id="bScene" style="min-height:76px" placeholder="a rain-soaked night market in Kuala Lumpur, a middle-aged hawker in a white apron behind a wok"></textarea></div>
+
+      <div class="span2" style="display:flex;flex-direction:column;gap:10px" id="bShots"></div>
+      <div class="span2"><button class="btn" type="button" id="bAddShot"><svg class="ic"><use href="#i-add"/></svg>Add shot</button></div>
+
+      <div class="field"><label class="lbl" for="bCam">Camera move</label>
+        <select id="bCam">
+          <option value="">none / let the shot decide</option>
+          <option value="holds a static shot">Static</option>
+          <option value="pushes in with small amplitude at slow speed">Push in, slow</option>
+          <option value="pushes in with large amplitude at fast speed">Push in, fast</option>
+          <option value="pulls out with small amplitude at slow speed">Pull out, slow</option>
+          <option value="pans right with small amplitude at slow speed">Pan right</option>
+          <option value="pans left with small amplitude at slow speed">Pan left</option>
+          <option value="trucks right with small amplitude at slow speed">Truck right</option>
+          <option value="tracks the subject with small amplitude at normal speed">Tracking</option>
+          <option value="arcs around the subject with small amplitude at slow speed">Arc shot</option>
+          <option value="tilts up with small amplitude at slow speed">Tilt up</option>
+          <option value="shakes slightly, handheld">Handheld shake</option>
+          <option value="POV of the subject">POV</option>
+        </select></div>
+
+      <div class="field"><label class="lbl" for="bLang">Dialogue language</label>
+        <select id="bLang">
+          <option value="English">English</option><option value="Malay">Malay</option><option value="Mandarin">Mandarin</option>
+          <option value="Cantonese">Cantonese</option><option value="Tamil">Tamil</option><option value="Japanese">Japanese</option>
+          <option value="Korean">Korean</option><option value="Spanish">Spanish</option><option value="Arabic">Arabic</option>
+        </select></div>
+
+      <div class="field span2"><label class="lbl" for="bSpeaker">Speaker <span class="hint">voice, age, on-screen or off</span></label>
+        <input id="bSpeaker" type="text" placeholder="the hawker, a low gravelly voice, on screen"></div>
+      <div class="field span2"><label class="lbl" for="bLine">Spoken line <span class="hint">rendered with lip-sync, word for word</span></label>
+        <input id="bLine" type="text" placeholder="Two ringgit, and mind the soup."></div>
+
+      <div class="field span2"><label class="lbl" for="bText">On-screen text <span class="hint">visible text only, kept verbatim</span></label>
+        <input id="bText" type="text" placeholder=""></div>
+      <div class="field span2"><label class="lbl" for="bSound">Soundscape <span class="hint">ambience, impacts, breathing — not music</span></label>
+        <input id="bSound" type="text" placeholder="Wok oil crackles over steady rain, distant traffic, a bicycle bell once."></div>
+      <div class="field span2"><label class="lbl" for="bMusic">Non-diegetic music <span class="hint">or leave empty for N/A</span></label>
+        <input id="bMusic" type="text" placeholder="Sparse muted trumpet at a slow tempo over brushed drums."></div>
+
+      <div class="span2 field"><span class="lbl">Preview</span><pre class="prev" id="bPrev"></pre></div>
+    </div>
+    <div class="foot">
+      <span class="hint" id="bHint"></span>
+      <button class="btn" type="button" id="bPolish" hidden><svg class="ic"><use href="#i-magic"/></svg>Polish with Qwen</button>
+      <button class="btn" type="button" id="bCopy"><svg class="ic"><use href="#i-copy"/></svg>Copy</button>
+      <button class="btn" type="button" id="bUse" style="background:var(--onair-ink);border-color:var(--onair-ink);color:#fff">Use this prompt</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="confirmDlg" class="confirm-dlg">
+  <div class="dlg">
+    <div class="top">
+      <h2 id="cDlgTitle">Confirm</h2>
+      <button class="btn icon" type="button" id="cDlgClose" aria-label="Close confirmation"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="confirm-body">
+      <p id="cDlgBody"></p>
+    </div>
+    <div class="foot">
+      <span class="hint" id="cDlgNote"></span>
+      <button class="btn" type="button" id="cDlgCancel">Cancel</button>
+      <button class="btn danger" type="button" id="cDlgOk">Confirm</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+let FPS = 24;
+const LS = {
+  get: (k, d) => { try { return localStorage.getItem('h3:' + k) ?? d } catch { return d } },
+  set: (k, v) => { try { localStorage.setItem('h3:' + k, String(v)) } catch {} },
+  del: k => { try { localStorage.removeItem('h3:' + k) } catch {} }
+};
+
+let KEY = LS.get('key', ''), engine = null, jobs = [], health = null, lanes = [], sel = null;
+let follow = true, lastSig = '', monSig = '', slateSig = '', COOKIE = false, pollAt = Date.now();
+let sortBy = LS.get('sort', 'newest');
+let foldFilter = LS.get('folder', '');
+let wfFilter = LS.get('wfFilter', 'all');
+let binSearch = '';
+let binView = LS.get('binView', 'grid') === 'list' ? 'list' : 'grid';
+let osdOn = LS.get('osd', '0') === '1';
+let composeCollapsed = LS.get('composeCollapsed', '0') === '1';
+let selectMode = false;
+let selectedIds = new Set();
+let monRaf = 0;
+let slateEditing = null;   // null | 'rename' | 'folder' | 'prompt'
+let editingJobId = null;
+let promptExpanded = false;
+let builderPolished = false;
+let refUid = 0;
+let dragRefIdx = null;
+let pendingSwap = null;    // { pairs: [[oldTag, newTag], ...], label: string }
+let reattachPlan = null;   // { sourceLabel: string, items: [{ tag, audioTag, name, roleLabel, modeLabel, kind }] }
+const keyUrls = { image: null, last_image: null };
+
+const tc = f => {
+  const s = Math.floor(f / FPS), p = n => String(n).padStart(2, '0');
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}:${p(Math.floor(f % FPS))}`;
+};
+const mmss = f => {
+  const s = f / FPS, p = n => String(n).padStart(2, '0');
+  return `${p(Math.floor(s / 60))}:${p(Math.floor(s % 60))}.${String(Math.floor((s % 1) * 1000)).padStart(3, '0')}`;
+};
+const hms = sec => {
+  sec = Math.max(0, Math.round(sec));
+  const p = n => String(n).padStart(2, '0');
+  return `${p(Math.floor(sec / 3600))}:${p(Math.floor(sec / 60) % 60)}:${p(sec % 60)}`;
+};
+const short = sec => {
+  sec = Math.max(0, Math.round(sec));
+  return sec >= 60 ? `${Math.floor(sec / 60)}m ${String(sec % 60).padStart(2, '0')}s` : `${sec}s`;
+};
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fdForm = (k, v) => { const f = new FormData(); f.append(k, v); return f };
+const url = (id, n) => `/files/${id}/${encodeURIComponent(n)}` + (COOKIE || !KEY ? '' : '?key=' + encodeURIComponent(KEY));
+const icon = (n, cls = 'ic') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const BARS = '<div class="bars" aria-hidden="true">' + ['#c0c0c0', '#c8c800', '#00c0c8', '#00c800', '#c800c8', '#c80000', '#0000c8'].map(c => `<i style="background:${c}"></i>`).join('') + '</div>';
+const STAGE = { queued: 'Queued', encode: 'Encoding prompt', denoise: 'Denoising', decode: 'Decoding', mux: 'Writing MP4' };
+
+async function api(path, opt = {}) {
+  const r = await fetch(path, { ...opt, credentials: 'same-origin', headers: { ...(KEY ? { 'x-api-key': KEY } : {}), ...(opt.headers || {}) } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail || r.status)); e.status = r.status; throw e }
+  return j;
+}
+
+/* ---------------- strip ResizeObserver ---------------- */
+const stripEl = $('#strip');
+function updateStripHeight() {
+  if (!stripEl) return;
+  document.documentElement.style.setProperty('--strip-h', Math.ceil(stripEl.getBoundingClientRect().height) + 'px');
+}
+if (typeof ResizeObserver !== 'undefined' && stripEl) {
+  new ResizeObserver(updateStripHeight).observe(stripEl);
+}
+window.addEventListener('resize', updateStripHeight);
+
+/* ---------------- confirm dialog ---------------- */
+let confirmResolve = null;
+function askConfirm({ title = 'Confirm', body = '', note = '', confirmLabel = 'Confirm', danger = true }) {
+  $('#cDlgTitle').textContent = title;
+  $('#cDlgBody').textContent = body;
+  $('#cDlgNote').textContent = note;
+  const ok = $('#cDlgOk');
+  ok.textContent = confirmLabel;
+  ok.className = danger ? 'btn danger' : 'btn';
+  if (!danger) { ok.style.background = 'var(--onair-ink)'; ok.style.borderColor = 'var(--onair-ink)'; ok.style.color = '#fff' }
+  else { ok.style.background = ''; ok.style.borderColor = ''; ok.style.color = '' }
+  return new Promise(resolve => {
+    confirmResolve = resolve;
+    $('#confirmDlg').showModal();
+  });
+}
+function closeConfirm(ans) {
+  if ($('#confirmDlg').open) $('#confirmDlg').close();
+  if (confirmResolve) { const r = confirmResolve; confirmResolve = null; r(ans) }
+}
+$('#cDlgCancel').onclick = () => closeConfirm(false);
+$('#cDlgClose').onclick = () => closeConfirm(false);
+$('#cDlgOk').onclick = () => closeConfirm(true);
+$('#confirmDlg').addEventListener('cancel', e => { e.preventDefault(); closeConfirm(false) });
+
+/* ---------------- engine bootstrap ---------------- */
+const CAL = { k: 0.015112, p: 1.5, c: 0 };
+const cost = (steps, frames) => CAL.c + CAL.k * steps * Math.pow(frames, CAL.p);
+const FALLBACK_FRAMES = Array.from({ length: 36 }, (_, i) => 17 * (i + 7) + 5);
+const minFrameCount = () => (engine?.frames?.[0] ?? FALLBACK_FRAMES[0]);
+const maxFrameCount = () => {
+  const arr = engine?.frames || FALLBACK_FRAMES;
+  return arr[arr.length - 1];
+};
+
+function refreshCost() {
+  const minFr = minFrameCount(), nativeMax = engine?.native_max_frames ?? 345;
+  const fr = +$('#frames').value || minFr;
+  const stepVals = engine?.steps ? Object.values(engine.steps) : [8, 12, 25, 50];
+  for (const n of stepVals) {
+    const el = $('#t' + n);
+    if (el) el.textContent = '~' + short(cost(n, fr));
+  }
+  const lh = $('#lenHint');
+  if (lh) lh.textContent = `${(fr / FPS).toFixed(2)} s · ${fr} frames` + (fr <= minFr ? ` · shortest H3 allows (${Math.floor(minFr / FPS)} s floor)` : fr > nativeMax ? ' · extended clip — heavy VRAM; use ≤ 25 steps' : '');
+}
+
+function legalFrameFor(val) {
+  const opts = [...$('#frames').options].map(o => +o.value);
+  if (!opts.length) return minFrameCount();
+  const n = Number(val) || opts[0];
+  if (opts.includes(n)) return n;
+  const ge = opts.find(x => x >= n);
+  return ge ?? opts[opts.length - 1];
+}
+
+function applyEngine() {
+  if (engine?.fps) FPS = engine.fps;
+  if (engine?.limits) Object.assign(REF_LIMITS, engine.limits);
+  if (engine?.max_prompt_chars && $('#prompt')) $('#prompt').maxLength = engine.max_prompt_chars;
+
+  const fr = $('#frames'), list = engine?.frames || FALLBACK_FRAMES, keep = +LS.get('frames', String(list[0]));
+  if (engine?.est) { CAL.k = engine.est.k; CAL.c = engine.est.c || 0; if (engine.est.p) CAL.p = engine.est.p }
+  fr.innerHTML = '';
+  for (const f of list) fr.add(new Option(`${(f / FPS).toFixed(1)} s · ${tc(f).slice(3)}`, f));
+  fr.value = list.includes(keep) ? keep : list[0];
+
+  if (engine?.ref_edges?.length && $('#refShortEdge')) {
+    const sel = $('#refShortEdge'), cur = sel.value;
+    const labels = { 2048: 'Default', 1536: 'Balanced', 1024: 'Fast' };
+    sel.innerHTML = '';
+    for (const e of engine.ref_edges) sel.add(new Option(`${e}px${labels[e] ? ` (${labels[e]})` : ''}`, String(e)));
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  }
+
+  if (engine?.aspects?.length && $('#aspect')) {
+    const sel = $('#aspect'), cur = sel.value, dims = engine.aspect_dims || {};
+    sel.innerHTML = '';
+    for (const a of engine.aspects) {
+      const hw = dims[a];
+      const lbl = a === 'auto' ? 'Auto · match ref' : (hw ? `${a} · ${hw[1]}×${hw[0]}` : a);
+      sel.add(new Option(lbl, a));
+    }
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  }
+
+  $('#ver').textContent = engine ? `v${engine.version}` : '';
+  const canPolish = !!engine?.polish;
+  if ($('#pPolish')) $('#pPolish').hidden = !canPolish;
+  if ($('#bPolish')) $('#bPolish').hidden = !canPolish;
+  refreshCost();
+}
+
+function boot() {
+  applyEngine();
+  $('#frames').onchange = () => { LS.set('frames', $('#frames').value); refreshCost(); updateComposeSummary() };
+  LS.set('frames', $('#frames').value);
+}
+
+/* ---------------- reference model, roles, probing & canonical tags ---------------- */
+const REF_LIMITS = { image: 9, video: 3, audio: 3 };
+const kindOf = f => {
+  const t = (f.type || '').split('/')[0];
+  if (t in REF_LIMITS) return t;
+  return ({
+    mp4: 'video', mov: 'video', webm: 'video', mkv: 'video', avi: 'video',
+    mp3: 'audio', wav: 'audio', m4a: 'audio', aac: 'audio', flac: 'audio', ogg: 'audio', opus: 'audio',
+    png: 'image', jpg: 'image', jpeg: 'image', webp: 'image', gif: 'image', bmp: 'image'
+  }[(f.name.split('.').pop() || '').toLowerCase()] || '');
+};
+
+const ROLE_GROUPS = {
+  image: [
+    ['subject_person', 'Person / Face'],
+    ['subject_outfit', 'Outfit / Costume'],
+    ['subject_place', 'Location / Place'],
+    ['subject_product', 'Product / Prop'],
+    ['subject_style', 'Style / Lighting'],
+    ['keyframe_anchor', 'Keyframe / Anchor'],
+    ['storyboard', 'Storyboard / Plan']
+  ],
+  video: [
+    ['video_edit', 'Video Source Edit'],
+    ['video_continue', 'Video Continuation'],
+    ['video_motion', 'Motion / Camera Ref'],
+    ['subject_person', 'Person in Video']
+  ],
+  audio: [
+    ['audio_voice', 'Voice Timbre'],
+    ['audio_bgm', 'BGM / Score'],
+    ['audio_sfx', 'SFX / Ambience']
+  ]
+};
+
+const ROLE_LABELS = Object.fromEntries(Object.values(ROLE_GROUPS).flat());
+const roleLabelFor = (kind, mode, rawRole) => {
+  const grp = rolesForItem(kind, mode);
+  const found = grp.find(([k]) => k === rawRole);
+  return found ? found[1] : (ROLE_LABELS[rawRole] || rawRole || kind);
+};
+const LEGACY_ROLE = {
+  subject_person: 'person',
+  subject_outfit: 'style',
+  subject_place: 'place',
+  subject_product: 'product',
+  subject_style: 'style',
+  keyframe_anchor: 'style',
+  storyboard: 'style',
+  video_edit: 'motion',
+  video_continue: 'motion',
+  video_motion: 'motion',
+  audio_voice: 'voice',
+  audio_bgm: 'voice',
+  audio_sfx: 'voice'
+};
+const LEGACY_TO_RICH = {
+  person: 'subject_person',
+  place: 'subject_place',
+  product: 'subject_product',
+  style: 'subject_style',
+  motion: 'video_motion',
+  voice: 'audio_voice'
+};
+
+let refFiles = [];
+
+function rolesForItem(kind, mode) {
+  if (kind === 'video' && mode === 'video_audio_only') return ROLE_GROUPS.audio;
+  return ROLE_GROUPS[kind] || ROLE_GROUPS.image;
+}
+
+function guessRole(f, mode) {
+  const kind = kindOf(f);
+  const n = (f.name || '').toLowerCase();
+  const hasTok = re => new RegExp(`(?:^|[^a-z0-9])(?:${re})(?:$|[^a-z0-9])`).test(n);
+  if (kind === 'audio' || mode === 'video_audio_only') {
+    if (hasTok('bgm|music|score|track|beat|ost|instrumental')) return 'audio_bgm';
+    if (hasTok('sfx|foley|rain|wind|ambient|ambience|sound|noise|bang|crash')) return 'audio_sfx';
+    return 'audio_voice';
+  }
+  if (kind === 'video') {
+    if (hasTok('edit|swap|source|src|orig')) return 'video_edit';
+    if (hasTok('continue|ext|seq|part|prev')) return 'video_continue';
+    if (hasTok('person|face|actor|host')) return 'subject_person';
+    return 'video_motion';
+  }
+  if (hasTok('outfit|costume|dress|suit|jacket|shirt|clothes|wardrobe|attire')) return 'subject_outfit';
+  if (hasTok('hq|office|building|tower|street|shop|store|mall|site|location|place|venue|factory|warehouse|cafe|restaurant|room|interior|exterior|facade|landmark|market|backdrop')) return 'subject_place';
+  if (hasTok('product|bottle|can|box|pack|shoe|bag|watch|phone|bike|motor|helmet|parcel|prop|item|object')) return 'subject_product';
+  if (hasTok('style|look|palette|grade|mood|lighting')) return 'subject_style';
+  if (hasTok('keyframe|anchor|first|last|start|end')) return 'keyframe_anchor';
+  if (hasTok('storyboard|board|plan|panel|sketch|layout')) return 'storyboard';
+  return 'subject_person';
+}
+
+function defaultGroupForRole(role, existing = refFiles) {
+  if (!role || !role.startsWith('subject_')) return null;
+  if (role === 'subject_outfit') {
+    const p = existing.find(r => r.role === 'subject_person' && r.subjectGroup);
+    if (p) return p.subjectGroup;
+  }
+  const sameRole = existing.find(r => r.role === role && r.subjectGroup);
+  if (sameRole) return sameRole.subjectGroup;
+  const used = new Set(existing.map(r => r.subjectGroup).filter(Boolean));
+  for (const g of [1, 2, 3, 4]) if (!used.has(g)) return g;
+  return 1;
+}
+
+function resolveRefTags(list = refFiles) {
+  let pi = 0, vi = 0, ai = 0;
+  return list.map((r, idx) => {
+    const kind = r.kind || kindOf(r.file);
+    const mode = kind === 'video' ? (r.mode === 'video_audio_only' ? 'video_audio_only' : 'video') : kind;
+    let tag = '', audioTag = null, audioUnverified = false;
+    if (mode === 'image') {
+      tag = `<Picture ${++pi}>`;
+    } else if (mode === 'video') {
+      tag = `<Video ${++vi}>`;
+      if (r.keep_video_audio !== false) {
+        if (r.hasAudio === true) audioTag = `<Audio ${++ai}>`;
+        else if (r.hasAudio === undefined) audioUnverified = true;
+      }
+    } else if (mode === 'video_audio_only') {
+      tag = `<Audio ${++ai}>`;
+      if (r.hasAudio === undefined) audioUnverified = true;
+    } else if (mode === 'audio') {
+      tag = `<Audio ${++ai}>`;
+    }
+    return {
+      index: idx, r, kind, mode, tag, audioTag, audioUnverified,
+      legacyRole: LEGACY_ROLE[r.role] || (kind === 'audio' ? 'voice' : kind === 'video' ? 'motion' : 'person'),
+      subjectGroup: r.role && r.role.startsWith('subject_') ? (r.subjectGroup || 1) : null
+    };
+  });
+}
+
+function resolveJobInputTags(j) {
+  const i = j?.inputs || {}, out = [];
+  if (j.workflow === 'fl2va') {
+    let pi = 0;
+    if (i.image) out.push({ tag: `<Picture ${++pi}>`, audioTag: null, kind: 'image', file: i.image, name: 'First frame', roleLabel: 'First frame' });
+    if (i.last_image) out.push({ tag: `<Picture ${++pi}>`, audioTag: null, kind: 'image', file: i.last_image, name: 'Last frame', roleLabel: 'Last frame' });
+    return out;
+  }
+  const refs = i.references || [];
+  const metaList = Array.isArray(j.ref_meta) ? j.ref_meta : [];
+  let pi = 0, vi = 0, ai = 0;
+  refs.forEach((r, idx) => {
+    const m = metaList[idx] || {};
+    const kind = r.kind || m.kind || 'image';
+    const mode = r.mode || m.mode || kind;
+    let tag = '', audioTag = null;
+    if (mode === 'image') tag = `<Picture ${++pi}>`;
+    else if (mode === 'video') {
+      tag = `<Video ${++vi}>`;
+      const keep = r.keep_video_audio !== undefined ? r.keep_video_audio : (m.keep_video_audio !== undefined ? m.keep_video_audio : (j.keep_video_audio !== false));
+      const hasAud = r.has_audio ?? r.source_has_audio;
+      if (keep && hasAud) audioTag = `<Audio ${++ai}>`;
+    } else if (mode === 'video_audio_only' || mode === 'audio') {
+      tag = `<Audio ${++ai}>`;
+    }
+    const rawUiRole = r.ui_role || m.ui_role || m.role || r.role || '';
+    const richRole = ROLE_LABELS[rawUiRole] ? rawUiRole : (LEGACY_TO_RICH[rawUiRole] || rawUiRole);
+    const effKind = mode === 'video_audio_only' ? 'audio' : kind;
+    const roleLabel = roleLabelFor(effKind, mode, richRole);
+    const rawGroup = r.subject_group ?? m.subject_group ?? null;
+    const group = rawGroup != null ? (String(rawGroup).replace(/^Subject\s+/i, '') || null) : null;
+    out.push({
+      tag: r.primary_tag || m.tag || tag,
+      audioTag: r.audio_tag ?? m.audio_tag ?? audioTag,
+      kind, mode, file: r.file, name: r.name, width: r.width, height: r.height, duration: r.duration,
+      has_audio: r.has_audio, roleLabel, subjectGroup: group,
+      start: r.start_sec ?? m.start_sec ?? m.start ?? 0,
+      end: r.end_sec ?? m.end_sec ?? m.end ?? null,
+      fps: r.fps_override ?? r.fps ?? m.fps_override ?? m.fps ?? null
+    });
+  });
+  return out;
+}
+
+function revokeRefThumb(r) {
+  if (r && r.thumbUrl) { try { URL.revokeObjectURL(r.thumbUrl) } catch {} r.thumbUrl = null }
+}
+
+function probeLocalRef(r) {
+  const kind = r.kind || kindOf(r.file);
+  const u = URL.createObjectURL(r.file);
+  if (kind === 'image') {
+    r.thumbUrl = u;
+    const im = new Image();
+    im.onload = () => { r.w = im.naturalWidth; r.h = im.naturalHeight; refreshRefUI() };
+    im.src = u;
+  } else if (kind === 'video') {
+    r.thumbUrl = u;
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.onloadedmetadata = () => {
+      if (v.videoWidth) r.w = v.videoWidth;
+      if (v.videoHeight) r.h = v.videoHeight;
+      if (Number.isFinite(v.duration) && v.duration > 0) r.dur = v.duration;
+      if (r.hasAudio === undefined) {
+        if (typeof v.mozHasAudio === 'boolean') r.hasAudio = v.mozHasAudio;
+        else if (v.audioTracks && typeof v.audioTracks.length === 'number') r.hasAudio = v.audioTracks.length > 0;
+      }
+      refreshRefUI();
+    };
+    v.src = u;
+  } else if (kind === 'audio') {
+    const a = document.createElement('audio');
+    a.preload = 'metadata';
+    a.onloadedmetadata = () => {
+      if (Number.isFinite(a.duration) && a.duration > 0) r.dur = a.duration;
+      URL.revokeObjectURL(u);
+      refreshRefUI();
+    };
+    a.onerror = () => URL.revokeObjectURL(u);
+    a.src = u;
+  } else {
+    URL.revokeObjectURL(u);
+  }
+}
+
+async function probeServerRef(r) {
+  if (!KEY && !COOKIE) return;
+  r.probing = true;
+  refreshRefUI();
+  try {
+    const fd = new FormData();
+    fd.append('file', r.file);
+    const res = await api('/api/probe', { method: 'POST', body: fd });
+    const d = res.probe || res.file || res;
+    if (d && typeof d === 'object') {
+      if (d.width) r.w = d.width;
+      if (d.height) r.h = d.height;
+      if (d.fps) r.fps = d.fps;
+      if (d.duration) r.dur = Number(d.duration);
+      if (typeof d.has_audio === 'boolean') {
+        r.hasAudio = d.has_audio;
+        if (!d.has_audio && r.kind === 'video') {
+          r.keep_video_audio = false;
+          if (r.mode === 'video_audio_only') {
+            r.mode = 'video';
+            r.role = guessRole(r.file, 'video');
+          }
+        }
+      }
+      r.probeSource = 'server';
+    }
+  } catch {
+    // Graceful degradation on v2.2 (404), offline, or unauthenticated: retain Audio ? / local metadata
+  } finally {
+    r.probing = false;
+    refreshRefUI();
+  }
+}
+
+function syncRefs() {
+  const dt = new DataTransfer();
+  refFiles.forEach(r => dt.items.add(r.file));
+  $('#refs').files = dt.files;
+}
+
+/* ---------------- prompt diagnostics & tag toolbar ---------------- */
+function analyzePromptLinks() {
+  const promptText = $('#prompt').value || '';
+  const wf = workflowNow();
+  const tagged = resolveRefTags(refFiles);
+  const validTags = new Set();
+  const slotByTag = new Map();
+
+  if (wf === 'ref2va') {
+    tagged.forEach(t => {
+      if (t.tag) { validTags.add(t.tag); slotByTag.set(t.tag, t) }
+      if (t.audioTag) { validTags.add(t.audioTag); slotByTag.set(t.audioTag, t) }
+    });
+  } else if (wf === 'fl2va') {
+    const hasFirst = !!$('#compose [name=image]').files[0];
+    const hasLast = !!$('#compose [name=last_image]').files[0];
+    let pi = 0;
+    if (hasFirst) validTags.add(`<Picture ${++pi}>`);
+    if (hasLast) validTags.add(`<Picture ${++pi}>`);
+  }
+
+  const promptTags = [];
+  const promptTagSet = new Set();
+  const tagRe = /<(Picture|Video|Audio)\s+(\d+)>/gi;
+  let m;
+  while ((m = tagRe.exec(promptText))) {
+    const canon = `<${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()} ${Number(m[2])}>`;
+    if (!promptTagSet.has(canon)) {
+      promptTagSet.add(canon);
+      promptTags.push({ tag: canon, kind: m[1].toLowerCase(), num: Number(m[2]) });
+    }
+  }
+
+  const missing = promptTags.filter(pt => !validTags.has(pt.tag));
+  const unlinked = [...validTags].filter(t => !promptTagSet.has(t));
+
+  const typos = [];
+  const typoRe = /(^|[^<\w])(Picture|Video|Audio|Subject)\s+(\d+)(?!\s*>)/gi;
+  while ((m = typoRe.exec(promptText))) {
+    const kind = m[2][0].toUpperCase() + m[2].slice(1).toLowerCase();
+    const raw = `${m[2]} ${m[3]}`;
+    const fixed = `<${kind} ${Number(m[3])}>`;
+    if (!typos.some(t => t.raw.toLowerCase() === raw.toLowerCase())) typos.push({ raw, fixed });
+  }
+
+  const openD = (promptText.match(/<d>/gi) || []).length;
+  const closeD = (promptText.match(/<\/d>/gi) || []).length;
+  const unclosedD = openD > closeD;
+
+  // Audio index shift & Audio ? checks
+  const audioShiftWarnings = [];
+  const audioUnknownVideos = [];
+  let sawLaterAudio = false;
+  for (let i = tagged.length - 1; i >= 0; i--) {
+    const t = tagged[i];
+    if (t.mode === 'audio' || t.mode === 'video_audio_only') sawLaterAudio = true;
+    if (t.mode === 'video' && t.r.keep_video_audio !== false) {
+      if (t.r.hasAudio === undefined) audioUnknownVideos.unshift(t);
+      if (t.audioTag && sawLaterAudio) audioShiftWarnings.unshift(t);
+    }
+  }
+
+  // Only-audio error
+  const onlyAudio = refFiles.length > 0 && tagged.every(t => t.mode === 'audio');
+
+  return { wf, tagged, validTags, slotByTag, promptTagSet, missing, unlinked, typos, unclosedD, audioUnknownVideos, audioShiftWarnings, onlyAudio };
+}
+
+function insertAtCursor(el, text, cursorOffsetBack = 0) {
+  const start = el.selectionStart ?? el.value.length;
+  const end = el.selectionEnd ?? el.value.length;
+  const before = el.value.slice(0, start);
+  const after = el.value.slice(end);
+  const needsSpaceBefore = before && !/[\s(\n]$/.test(before);
+  const insert = (needsSpaceBefore ? ' ' : '') + text;
+  el.value = before + insert + after;
+  const pos = before.length + insert.length - cursorOffsetBack;
+  el.focus();
+  el.setSelectionRange(pos, pos);
+  el.dispatchEvent(new Event('input'));
+}
+
+function generateRefBindings(tagged = resolveRefTags(refFiles), intent = B.intent) {
+  if (!tagged.length) return { defsText: '', retText: '' };
+  const defs = [], ret = [];
+  const groups = new Map();
+  const nonGroup = [];
+  for (const t of tagged) {
+    if (t.subjectGroup) {
+      if (!groups.has(t.subjectGroup)) groups.set(t.subjectGroup, []);
+      groups.get(t.subjectGroup).push(t);
+    } else {
+      nonGroup.push(t);
+    }
+  }
+  const hasEditVideo = tagged.some(t => t.r.role === 'video_edit') || intent === 'recreate';
+  const sortedGroups = [...groups.entries()].sort((a, b) => a[0] - b[0]);
+
+  for (const [gnum, items] of sortedGroups) {
+    const tags = items.map(x => x.tag).join(', ');
+    const hasPerson = items.some(x => x.r.role === 'subject_person');
+    const hasOutfit = items.some(x => x.r.role === 'subject_outfit');
+    const hasPlace = items.some(x => x.r.role === 'subject_place');
+    const hasProduct = items.some(x => x.r.role === 'subject_product');
+    const hasStyle = items.some(x => x.r.role === 'subject_style');
+    if (hasPerson) {
+      const outfitNote = hasOutfit ? ' with the outfit/costume shown' : '';
+      defs.push(`<Subject ${gnum}> is the person in ${tags}${outfitNote}, ${hasEditVideo ? 'defining their exact facial identity, bone structure, eye shape, nose, lip shape, natural skin texture, pores, hairstyle and build' : 'whose facial identity, hairstyle, skin tone, natural skin texture and build must carry into the target video'}.`);
+      ret.push(`<Subject ${gnum}> (appears in [Shot 1]): fully_preserved - exact facial geometry, skin pores, eye detail, hair and build from ${tags} are preserved without identity drift.`);
+    } else if (hasOutfit) {
+      defs.push(`<Subject ${gnum}> is the outfit/costume in ${tags}, whose fabric, cut, colours and accessories must carry into the target video.`);
+      ret.push(`<Subject ${gnum}> (appears in [Shot 1]): fully_preserved - outfit silhouette, texture and details from ${tags} are preserved.`);
+    } else if (hasPlace) {
+      defs.push(`<Subject ${gnum}> is the location in ${tags}, whose architecture, signage and surroundings must carry into the target video.`);
+      ret.push(`<Subject ${gnum}> (appears in [Shot 1]): fully_preserved - the location's massing, facade and signage from ${tags} carry into the target video.`);
+    } else if (hasProduct) {
+      defs.push(`<Subject ${gnum}> is the object/product in ${tags}, whose shape, material, colour and markings must be preserved.`);
+      ret.push(`<Subject ${gnum}> (appears in [Shot 1]): fully_preserved - the object's form, finish and markings from ${tags} carry into the target video.`);
+    } else if (hasStyle) {
+      defs.push(`<Subject ${gnum}> defines the visual style, palette and lighting reference in ${tags}.`);
+      ret.push(`<Subject ${gnum}>: reference - the visual look and lighting from ${tags} are followed without copying the frame.`);
+    }
+  }
+
+  for (const t of nonGroup) {
+    const r = t.r;
+    if (r.role === 'keyframe_anchor') {
+      defs.push(`${t.tag} serves as a visual keyframe composition anchor for [Shot 1].`);
+      ret.push(`${t.tag}: reference - framing and spatial layout guide the shot.`);
+    } else if (r.role === 'storyboard') {
+      defs.push(`${t.tag} provides the storyboard layout and beat progression.`);
+      ret.push(`${t.tag}: reference - panel composition and staging order are followed.`);
+    } else if (r.role === 'video_edit') {
+      defs.push(`${t.tag} is the source video for the target video edit.`);
+      ret.push(`${t.tag} (source video editing): partially_preserved - body motion, camera movement, lighting, color grade and environment are preserved while applying the edit.`);
+      if (t.audioTag) {
+        defs.push(`${t.audioTag} is the synchronized audio track of ${t.tag}.`);
+        ret.push(`${t.audioTag}: partially_copy - synchronized audio from ${t.tag} carries into the target video.`);
+      }
+    } else if (r.role === 'video_continue') {
+      defs.push(`${t.tag} is the preceding clip whose ending scene, characters, lighting and motion continue into [Shot 1].`);
+      ret.push(`${t.tag} (continuation): fully_preserved - final appearance, momentum and atmosphere carry smoothly into the target video.`);
+      if (t.audioTag) {
+        defs.push(`${t.audioTag} is the synchronized audio track of ${t.tag}.`);
+        ret.push(`${t.audioTag}: reference - acoustic ambience from ${t.tag} bridges cleanly into the continuation.`);
+      }
+    } else if (r.role === 'video_motion') {
+      defs.push(`${t.tag} provides the motion and camera behaviour for [Shot 1].`);
+      ret.push(`${t.tag}: reference - motion and camera behaviour are followed without copying the footage.`);
+      if (t.audioTag) {
+        defs.push(`${t.audioTag} is the synchronized audio track of ${t.tag}.`);
+        ret.push(`${t.audioTag}: partially_copy - ambient audio from ${t.tag} carries into the target video.`);
+      }
+    } else if (r.role === 'audio_voice') {
+      defs.push(`${t.tag} provides the voice timbre and vocal delivery for the speaker.`);
+      ret.push(`${t.tag}: reference - vocal timbre and pacing are followed.`);
+    } else if (r.role === 'audio_bgm') {
+      defs.push(`${t.tag} provides the musical score, tempo and instrumentation.`);
+      ret.push(`${t.tag}: reference - musical mood and rhythm guide the soundtrack.`);
+    } else if (r.role === 'audio_sfx') {
+      defs.push(`${t.tag} provides environmental sound effects and foley texture.`);
+      ret.push(`${t.tag}: reference - acoustic character and ambience are followed.`);
+    }
+  }
+  return { defsText: defs.join(' '), retText: ret.join(' ') };
+}
+
+function bindRefsIntoPrompt() {
+  const wf = workflowNow();
+  const el = $('#prompt');
+  const cur = el.value.trim();
+  if (wf === 'fl2va') {
+    const hasFirst = !!$('#compose [name=image]').files[0];
+    const hasLast = !!$('#compose [name=last_image]').files[0];
+    const frames = +$('#frames').value || 124, dur = (frames / FPS).toFixed(2);
+    const header = hasFirst && hasLast
+      ? `How the reference pictures align with the target video — <Picture 1> (from [Shot 1]) aligns with the 0.00-second mark of the target video; <Picture 2> (from [Shot 1]) aligns with the ${dur}-second mark of the target video.`
+      : hasLast
+        ? `How the reference pictures align with the target video — <Picture 1> (from [Shot 1]) aligns with the ${dur}-second mark of the target video.`
+        : `For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.`;
+    const stripped = cur.replace(/^(How the reference pictures align[^\n]*|For the target video, at 0\.00 seconds[^\n]*)\n+/i, '');
+    el.value = stripped ? `${header}\n\n${stripped}` : `${header}\n\nintegrated_multimodal_description: [Shot 1] `;
+    el.dispatchEvent(new Event('input'));
+    el.focus();
+    return msg('Keyframe alignment header updated in prompt.');
+  }
+  if (!refFiles.length) return msg('Attach at least one reference first to bind tags.', true);
+  const tagged = resolveRefTags(refFiles);
+  const { defsText, retText } = generateRefBindings(tagged);
+  if (!cur) {
+    el.value = `subject_definitions: ${defsText}\n\nsummary: [reference generation] Describe the scene here.\n\nretention_analysis: ${retText}\n\ndetailed_description: [Shot 1] Describe the action in order.\n\noverall_soundscape: Natural ambience underneath.\n\nnon_diegetic_music: N/A`;
+  } else if (/subject_definitions:/i.test(cur)) {
+    let next = cur.replace(/subject_definitions:[\s\S]*?(?=\n\s*(summary:|retention_analysis:|detailed_description:|overall_soundscape:|non_diegetic_music:|$))/i, `subject_definitions: ${defsText}`);
+    if (/retention_analysis:/i.test(next)) {
+      next = next.replace(/retention_analysis:[\s\S]*?(?=\n\s*(detailed_description:|overall_soundscape:|non_diegetic_music:|$))/i, `retention_analysis: ${retText}`);
+    } else if (/detailed_description:/i.test(next)) {
+      next = next.replace(/(detailed_description:)/i, `retention_analysis: ${retText}\n\n$1`);
+    } else {
+      next += `\n\nretention_analysis: ${retText}`;
+    }
+    el.value = next;
+  } else if (/detailed_description:/i.test(cur)) {
+    el.value = `subject_definitions: ${defsText}\n\nretention_analysis: ${retText}\n\n` + cur;
+  } else {
+    el.value = `subject_definitions: ${defsText}\n\nsummary: [reference generation] ${cur.split(/\n/)[0]}\n\nretention_analysis: ${retText}\n\ndetailed_description: [Shot 1] ${cur}`;
+  }
+  el.dispatchEvent(new Event('input'));
+  el.focus();
+  msg('Bound subject_definitions & retention_analysis from current references.');
+}
+
+function updateTagBar() {
+  const bar = $('#tagBar');
+  if (!bar) return;
+  const diag = analyzePromptLinks();
+  const promptText = $('#prompt').value || '';
+  const liveChips = [];
+  for (const tag of diag.validTags) {
+    const linked = diag.promptTagSet.has(tag);
+    const cls = linked ? 'is-linked' : 'is-unlinked';
+    liveChips.push(`<button type="button" class="tchip ${cls}" data-ins="${esc(tag)}" title="${linked ? 'Referenced in prompt — click to insert again' : 'Attached but not in prompt — click to insert'}">${esc(tag)}</button>`);
+  }
+
+  // Next available ghost add chips
+  const imgCount = refFiles.filter(r => r.kind === 'image').length;
+  const vidCount = refFiles.filter(r => r.kind === 'video').length;
+  const audSlots = [...diag.validTags].filter(t => t.startsWith('<Audio ')).length;
+  const ghostChips = [];
+  if (imgCount < REF_LIMITS.image && refFiles.length < 12) ghostChips.push(`<button type="button" class="tchip is-ghost" data-pick="image" title="Attach image reference">+ &lt;Picture ${imgCount + 1}&gt;</button>`);
+  if (vidCount < REF_LIMITS.video && refFiles.length < 12) ghostChips.push(`<button type="button" class="tchip is-ghost" data-pick="video" title="Attach video reference">+ &lt;Video ${vidCount + 1}&gt;</button>`);
+  if (refFiles.filter(r => r.kind === 'audio').length < REF_LIMITS.audio && refFiles.length < 12) ghostChips.push(`<button type="button" class="tchip is-ghost" data-pick="audio" title="Attach audio reference">+ &lt;Audio ${audSlots + 1}&gt;</button>`);
+
+  // Structural tags
+  const groupsUsed = [...new Set(diag.tagged.map(t => t.subjectGroup).filter(Boolean))].sort((a, b) => a - b);
+  const nextSubj = groupsUsed.length ? groupsUsed[0] : 1;
+  const shotNums = [...promptText.matchAll(/\[Shot\s+(\d+)\]/gi)].map(m => Number(m[1]));
+  const nextShot = shotNums.length ? Math.max(...shotNums) + 1 : 1;
+  const lang = ($('#bLang')?.value || 'English');
+  const subjButtons = (groupsUsed.length ? groupsUsed : [nextSubj]).map(g =>
+    `<button type="button" class="tchip is-struct" data-ins="&lt;Subject ${g}&gt;" title="Insert Subject ${g} tag">&lt;Subject ${g}&gt;</button>`
+  ).join('');
+
+  bar.innerHTML =
+    (liveChips.length ? `<div class="tagbar-grp">${liveChips.join('')}</div><span class="tagbar-sep"></span>` : '') +
+    (ghostChips.length ? `<div class="tagbar-grp">${ghostChips.join('')}</div><span class="tagbar-sep"></span>` : '') +
+    `<div class="tagbar-grp">
+      ${subjButtons}
+      <button type="button" class="tchip is-struct" data-ins="[Shot ${nextShot}]" title="Insert shot marker">[Shot ${nextShot}]</button>
+      <button type="button" class="tchip is-struct" data-ins-d="${esc(lang)}" title="Insert spoken dialogue block">&lt;d&gt;[${esc(lang)}] &lt;/d&gt;</button>
+      <button type="button" class="tchip is-bind" id="bindRefsBtn" title="Generate or update subject_definitions and retention_analysis from attached files">Bind refs</button>
+    </div>`;
+
+  bar.querySelectorAll('[data-ins]').forEach(b => b.onclick = () => insertAtCursor($('#prompt'), b.dataset.ins));
+  bar.querySelectorAll('[data-ins-d]').forEach(b => b.onclick = () => insertAtCursor($('#prompt'), `<d>[${b.dataset.insD}] </d>`, 4));
+  bar.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => openScopedPicker(b.dataset.pick));
+  const bindBtn = $('#bindRefsBtn');
+  if (bindBtn) bindBtn.onclick = bindRefsIntoPrompt;
+}
+
+function runDiagnostics() {
+  const box = $('#linkDiag');
+  if (!box) return;
+  const d = analyzePromptLinks();
+  const rows = [];
+
+  if (d.onlyAudio) {
+    rows.push({
+      tone: 'is-err',
+      text: 'Audio references need at least one image or video reference too.',
+      actions: [{ label: '+ Add image', fn: () => openScopedPicker('image') }]
+    });
+  }
+
+  for (const miss of d.missing) {
+    // Check for gap fix: e.g. prompt uses <Picture 3> when <Picture 2> is next slot or unreferenced
+    const sameKindValid = [...d.validTags].filter(t => t.toLowerCase().startsWith(`<${miss.kind} `));
+    const unrefSameKind = d.unlinked.find(t => t.toLowerCase().startsWith(`<${miss.kind} `));
+    const actions = [{ label: `+ Attach ${miss.tag}`, fn: () => openScopedPicker(miss.kind) }];
+    if (unrefSameKind) {
+      actions.push({
+        label: `Rebind ${miss.tag} -> ${unrefSameKind}`,
+        fn: () => replaceTagInPrompt(miss.tag, unrefSameKind)
+      });
+    } else if (sameKindValid.length) {
+      const highest = sameKindValid[sameKindValid.length - 1];
+      actions.push({
+        label: `Fix gap -> ${highest}`,
+        fn: () => replaceTagInPrompt(miss.tag, highest)
+      });
+    } else {
+      actions.push({
+        label: `Remove ${miss.tag}`,
+        fn: () => removeTagFromPrompt(miss.tag)
+      });
+    }
+    rows.push({
+      tone: 'is-err',
+      text: `Prompt references ${miss.tag}, which is not attached.`,
+      actions
+    });
+  }
+
+  for (const u of d.unlinked) {
+    rows.push({
+      tone: 'is-warn',
+      text: `${u} is attached (${d.slotByTag.get(u)?.r.file.name || 'keyframe'}) but not referenced in prompt.`,
+      actions: [{ label: `+ Insert ${u}`, fn: () => insertAtCursor($('#prompt'), u) }]
+    });
+  }
+
+  for (const v of d.audioUnknownVideos) {
+    rows.push({
+      tone: 'is-warn',
+      text: `${v.tag} audio status unknown (Audio ?). Connect to probe or mute to avoid unexpected <Audio N> shifts.`,
+      actions: [{
+        label: `Set ${v.tag} Silent`,
+        fn: () => { v.r.keep_video_audio = false; refreshRefUI() }
+      }]
+    });
+  }
+
+  for (const v of d.audioShiftWarnings) {
+    const audioFiles = d.tagged.filter(t => t.mode === 'audio' || t.mode === 'video_audio_only');
+    const firstAudioFileTag = audioFiles[0]?.tag;
+    const actions = [{
+      label: `Mute ${v.tag}`,
+      fn: () => { v.r.keep_video_audio = false; refreshRefUI() }
+    }];
+    if (firstAudioFileTag && d.promptTagSet.has(v.audioTag) && !d.promptTagSet.has(firstAudioFileTag)) {
+      actions.unshift({
+        label: `Shift ${v.audioTag} -> ${firstAudioFileTag}`,
+        fn: () => replaceTagInPrompt(v.audioTag, firstAudioFileTag)
+      });
+    }
+    rows.push({
+      tone: 'is-warn',
+      text: `${v.tag} carries ${v.audioTag}, shifting later audio files (audio file is ${firstAudioFileTag || 'shifted'}).`,
+      actions
+    });
+  }
+
+  for (const tp of d.typos) {
+    rows.push({
+      tone: 'is-warn',
+      text: `Missing angle brackets around "${tp.raw}" — H3 requires ${tp.fixed}.`,
+      actions: [{
+        label: `Fix -> ${tp.fixed}`,
+        fn: () => {
+          const re = new RegExp(`(^|[^<\\w])${tp.raw.replace(/\s+/g, '\\s+')}(?!\\s*>)`, 'gi');
+          $('#prompt').value = $('#prompt').value.replace(re, (_, pre) => pre + tp.fixed);
+          $('#prompt').dispatchEvent(new Event('input'));
+        }
+      }]
+    });
+  }
+
+  if (d.unclosedD) {
+    rows.push({
+      tone: 'is-err',
+      text: 'Unclosed <d> dialogue tag detected — close speech blocks with </d>.',
+      actions: [{
+        label: 'Close </d>',
+        fn: () => {
+          const val = $('#prompt').value;
+          $('#prompt').value = val.replace(/(<d>[^\n]*?)(?=\n|$)(?![\s\S]*<\/d>)/i, '$1</d>');
+          if ($('#prompt').value === val) $('#prompt').value = val + '</d>';
+          $('#prompt').dispatchEvent(new Event('input'));
+        }
+      }]
+    });
+  }
+
+  if (!rows.length && d.validTags.size > 0 && ($('#prompt').value || '').trim()) {
+    rows.push({
+      tone: 'is-ok',
+      text: `All ${d.validTags.size} attached reference tag${d.validTags.size > 1 ? 's' : ''} linked cleanly.`,
+      actions: []
+    });
+  }
+
+  box.innerHTML = '';
+  rows.forEach(row => {
+    const div = document.createElement('div');
+    div.className = `diag-item ${row.tone}`;
+    const span = document.createElement('span');
+    span.className = 'diag-msg';
+    span.innerHTML = `${icon(row.tone === 'is-ok' ? 'check' : 'warn')}<span>${esc(row.text)}</span>`;
+    div.appendChild(span);
+    if (row.actions.length) {
+      const acts = document.createElement('div');
+      acts.className = 'diag-acts';
+      row.actions.forEach(a => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn sm';
+        b.textContent = a.label;
+        b.onclick = a.fn;
+        acts.appendChild(b);
+      });
+      div.appendChild(acts);
+    }
+    box.appendChild(div);
+  });
+}
+
+function replaceTagInPrompt(fromTag, toTag) {
+  const re = new RegExp(fromTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  $('#prompt').value = $('#prompt').value.replace(re, toTag);
+  $('#prompt').dispatchEvent(new Event('input'));
+}
+function removeTagFromPrompt(tag) {
+  const re = new RegExp(`\\s*${tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'gi');
+  $('#prompt').value = $('#prompt').value.replace(re, '').trim();
+  $('#prompt').dispatchEvent(new Event('input'));
+}
+
+function openScopedPicker(kind) {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.multiple = true;
+  inp.accept = kind === 'image' ? 'image/*' : kind === 'video' ? 'video/*' : kind === 'audio' ? 'audio/*' : 'image/*,video/*,audio/*';
+  inp.onchange = () => { if (inp.files?.length) addRefFileList([...inp.files]) };
+  inp.click();
+}
+
+/* ---------------- reference cards & ghost cards ---------------- */
+function moveRef(from, to) {
+  if (from === to || from < 0 || to < 0 || from >= refFiles.length || to >= refFiles.length) return;
+  const before = resolveRefTags(refFiles);
+  const [moved] = refFiles.splice(from, 1);
+  refFiles.splice(to, 0, moved);
+  const after = resolveRefTags(refFiles);
+
+  // Detect tag swaps whose old tags appear in #prompt
+  const promptText = $('#prompt').value || '';
+  const beforeByRef = new Map(before.map(t => [t.r, t.tag]));
+  const pairs = [];
+  for (const t of after) {
+    const oldTag = beforeByRef.get(t.r);
+    if (oldTag && t.tag && oldTag !== t.tag) pairs.push([oldTag, t.tag]);
+  }
+  const touchesPrompt = pairs.some(([o]) => promptText.includes(o));
+  pendingSwap = touchesPrompt ? {
+    pairs,
+    label: `Reordered ${pairs.map(([a, b]) => `${a} -> ${b}`).join(', ')} — swap tags in prompt?`
+  } : null;
+
+  syncRefs();
+  refreshRefUI();
+}
+
+function applyAtomicTagSwap() {
+  if (!pendingSwap) return;
+  let txt = $('#prompt').value;
+  const tokens = [];
+  pendingSwap.pairs.forEach(([oldTag, newTag], i) => {
+    const sentinel = `\uE000H3SWAP${i}\uE001`;
+    tokens.push([sentinel, newTag]);
+    txt = txt.split(oldTag).join(sentinel);
+  });
+  tokens.forEach(([sentinel, newTag]) => { txt = txt.split(sentinel).join(newTag) });
+  $('#prompt').value = txt;
+  pendingSwap = null;
+  $('#prompt').dispatchEvent(new Event('input'));
+  refreshRefUI();
+  msg('Swapped reference tags in prompt.');
+}
+
+function updateModeSwitchBars() {
+  const hasKf = ['image', 'last_image'].some(n => $('#compose [name=' + n + ']').files[0]);
+  const hasRefs = refFiles.length > 0;
+  $('#kfSwitchBar').hidden = !hasRefs;
+  $('#refSwitchBar').hidden = !hasKf;
+  $('#kfDrops').querySelectorAll('.drop').forEach(d => d.classList.toggle('is-muted', hasRefs));
+  $('#refDropzone').classList.toggle('is-muted', hasKf);
+}
+
+function refreshRefUI() {
+  syncRefs();
+  paintRefs();
+  updateTagBar();
+  runDiagnostics();
+  updateWorkflowBadges();
+  updateModeSwitchBars();
+  updateReattachChecklist();
+  updateComposeSummary();
+}
+
+let _lastTagLinkSig = '';
+function tagLinkSig(d) {
+  return `${d.wf}|${[...d.promptTagSet].sort().join(',')}|${d.missing.map(m => m.tag).join(',')}|${[...d.validTags].sort().join(',')}`;
+}
+
+function paintRefs() {
+  const tagged = resolveRefTags(refFiles);
+  const diag = analyzePromptLinks();
+  _lastTagLinkSig = tagLinkSig(diag);
+  const effK = tagged.map(t => t.mode === 'video_audio_only' ? 'audio' : t.kind);
+  $('#cImg').textContent = effK.filter(x => x === 'image').length;
+  $('#cVid').textContent = effK.filter(x => x === 'video').length;
+  $('#cAud').textContent = effK.filter(x => x === 'audio').length;
+  $('#cAll').textContent = refFiles.length;
+
+  const swapEl = $('#swapBanner');
+  if (pendingSwap) {
+    swapEl.hidden = false;
+    swapEl.innerHTML = `<span>${esc(pendingSwap.label)}</span>
+      <span style="display:flex;gap:6px">
+        <button type="button" class="btn sm" id="doSwapTags">Swap tags in prompt</button>
+        <button type="button" class="btn sm" id="dismissSwap">Keep as-is</button>
+      </span>`;
+    $('#doSwapTags').onclick = applyAtomicTagSwap;
+    $('#dismissSwap').onclick = () => { pendingSwap = null; paintRefs() };
+  } else {
+    swapEl.hidden = true;
+    swapEl.innerHTML = '';
+  }
+
+  const listEl = $('#refList');
+  const cardsHtml = tagged.map((t, i) => {
+    const r = t.r;
+    const isLinked = diag.promptTagSet.has(t.tag);
+    const isAudioLinked = t.audioTag ? diag.promptTagSet.has(t.audioTag) : false;
+    const roleOptions = rolesForItem(t.kind, t.mode);
+    const showGroup = r.role && r.role.startsWith('subject_');
+    const audioBadge = t.kind === 'video'
+      ? (r.hasAudio === true ? 'Has audio' : r.hasAudio === false ? 'Silent' : 'Audio ?')
+      : '';
+    const meta = [
+      r.w && r.h ? `${r.w}×${r.h}` : '',
+      r.dur ? `${r.dur.toFixed(1)}s` : '',
+      r.fps ? `${r.fps}fps` : '',
+      audioBadge,
+      r.probing ? 'Probing…' : ''
+    ].filter(Boolean).join(' · ');
+
+    const lowImg = t.kind === 'image' && (r.role === 'subject_person' || r.role === 'subject_outfit') &&
+      ((r.w && Math.min(r.w, r.h) < 512) || r.file.size < 65000);
+    const effDur = r.dur ? Math.max(0, (r.end && r.end > r.start ? r.end : r.dur) - (r.start || 0)) : null;
+    const minRefVid = engine?.ref_video_min_s ?? 1.9;
+    const maxRefVid = engine?.ref_video_max_s ?? ((engine?.max_duration_s || 30.0) + 0.5);
+    const minRefAud = engine?.ref_audio_min_s ?? 0.2;
+    const vidDurErr = t.mode === 'video' && effDur !== null && (effDur < minRefVid || effDur > maxRefVid);
+    const audDurErr = (t.mode === 'audio' || t.mode === 'video_audio_only') && effDur !== null && effDur <= minRefAud;
+    const trimErr = false;
+
+    const thumbHtml = t.kind === 'image' && r.thumbUrl
+      ? `<img src="${r.thumbUrl}" alt="">`
+      : t.kind === 'video' && r.thumbUrl
+        ? `<video muted playsinline preload="metadata" src="${r.thumbUrl}#t=0.2" tabindex="-1"></video>`
+        : t.kind === 'audio' ? icon('audio') : icon('image');
+
+    const videoModeVal = t.mode === 'video_audio_only' ? 'video_audio_only' : (r.keep_video_audio === false ? 'video_silent' : 'video_audio');
+    const noAudio = r.hasAudio === false;
+
+    return `<div class="refcard" data-ref-idx="${i}" draggable="true">
+      <div class="ref-top">
+        <span class="ref-grip" title="Drag to reorder">${icon('grip')}</span>
+        <span class="ref-thumb">${thumbHtml}</span>
+        <div class="ref-info">
+          <div class="ref-tags">
+            <span class="rtag ${isLinked ? 'is-linked' : 'is-unlinked'}">${esc(t.tag)}</span>
+            ${t.audioTag ? `<span class="rtag ${isAudioLinked ? 'is-linked' : 'is-unlinked'}">${esc(t.audioTag)}</span>` : ''}
+            ${t.audioUnverified && t.mode === 'video' ? `<span class="rtag is-audio-unknown" title="Audio stream not verified yet">Audio ?</span>` : ''}
+            ${showGroup ? `<span class="rtag">&lt;Subject ${t.subjectGroup}&gt;</span>` : ''}
+          </div>
+          <div class="ref-name" title="${esc(r.file.name)}">${esc(r.file.name)}</div>
+          <div class="ref-meta">${esc(meta || `${Math.round(r.file.size / 1024)} KB`)}</div>
+        </div>
+        <div class="ref-move">
+          <button class="btn icon sm" type="button" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move ${esc(r.file.name)} up">${icon('up')}</button>
+          <button class="btn icon sm" type="button" data-dn="${i}" ${i === tagged.length - 1 ? 'disabled' : ''} aria-label="Move ${esc(r.file.name)} down">${icon('down')}</button>
+          <button class="btn icon sm danger" type="button" data-drop="${i}" aria-label="Remove ${esc(r.file.name)}">${icon('x')}</button>
+        </div>
+      </div>
+
+      <div class="ref-controls">
+        ${t.kind === 'video' ? `<div class="ref-ctl">
+          <span class="lbl">Track mode</span>
+          <select data-vmode="${i}" aria-label="Track mode for ${esc(r.file.name)}">
+            <option value="video_audio" ${videoModeVal === 'video_audio' ? 'selected' : ''} ${noAudio ? 'disabled' : ''}>Video + Audio</option>
+            <option value="video_silent" ${videoModeVal === 'video_silent' ? 'selected' : ''}>Video (Silent)</option>
+            <option value="video_audio_only" ${videoModeVal === 'video_audio_only' ? 'selected' : ''} ${noAudio ? 'disabled' : ''}>Audio Only (extract track)</option>
+          </select>
+        </div>` : ''}
+        <div class="ref-ctl">
+          <span class="lbl">Role</span>
+          <select data-role="${i}" aria-label="Role for ${esc(r.file.name)}">
+            ${roleOptions.map(([v, label]) => `<option value="${v}"${v === r.role ? ' selected' : ''}>${esc(label)}</option>`).join('')}
+          </select>
+        </div>
+        ${showGroup ? `<div class="ref-ctl">
+          <span class="lbl">Subject group</span>
+          <select data-group="${i}" aria-label="Subject group for ${esc(r.file.name)}">
+            ${[1, 2, 3, 4].map(g => `<option value="${g}"${t.subjectGroup === g ? ' selected' : ''}>Subject ${g}</option>`).join('')}
+          </select>
+        </div>` : ''}
+      </div>
+
+      ${(t.kind === 'video' || t.kind === 'audio') ? `<div class="ref-trim-row">
+        <div class="ref-trim-field">
+          <label class="lbl">Start (s)</label>
+          <input type="number" class="tc" min="0" ${r.dur ? `max="${Math.max(0, r.dur - 0.1).toFixed(1)}"` : ''} step="0.1" value="${r.start || 0}" data-start="${i}" aria-label="Start seconds for ${esc(r.file.name)}">
+        </div>
+        <div class="ref-trim-field">
+          <label class="lbl">End (s)</label>
+          <input type="number" class="tc" min="0" ${r.dur ? `max="${r.dur.toFixed(1)}"` : ''} step="0.1" placeholder="${r.dur ? r.dur.toFixed(1) : 'end'}" value="${r.end ?? ''}" data-end="${i}" aria-label="End seconds for ${esc(r.file.name)}">
+        </div>
+        ${t.kind === 'video' ? `<div class="ref-trim-field">
+          <label class="lbl">FPS</label>
+          <input type="number" class="tc" min="8" max="60" step="1" placeholder="${r.fps ? Math.round(r.fps) : 'auto'}" value="${r.targetFps ?? ''}" data-fps="${i}" aria-label="FPS override for ${esc(r.file.name)}">
+        </div>` : ''}
+        <button type="button" class="btn sm" data-match-len="${i}" ${r.dur ? '' : 'disabled'} title="Set output length to match this reference duration">Match ref length</button>
+      </div>` : ''}
+
+      ${lowImg ? `<div class="ref-warn">Low-res / compressed photo (${Math.round(r.file.size / 1024)} KB) — sharper photos preserve better face detail.</div>` : ''}
+      ${vidDurErr ? `<div class="ref-err">Selected video segment is ${effDur.toFixed(1)}s — H3 accepts ${minRefVid.toFixed(1)}s–${Math.round(maxRefVid - 0.5)}s.</div>` : ''}
+      ${audDurErr ? `<div class="ref-err">Selected audio segment is ${effDur.toFixed(2)}s — must be &gt; ${minRefAud.toFixed(1)}s.</div>` : ''}
+    </div>`;
+  });
+
+  // Missing-Tag Ghost Cards
+  const ghostHtml = diag.wf !== 'fl2va' ? diag.missing.map(miss => {
+    const sameKindValid = [...diag.validTags].filter(t => t.toLowerCase().startsWith(`<${miss.kind} `));
+    const unrefSameKind = diag.unlinked.find(t => t.toLowerCase().startsWith(`<${miss.kind} `));
+    const fixLabel = unrefSameKind ? `Rebind to ${unrefSameKind}` : (sameKindValid.length ? `Fix gap -> ${sameKindValid[sameKindValid.length - 1]}` : '');
+    return `<div class="refcard is-ghost" data-ghost="${esc(miss.tag)}">
+      <div class="ref-top">
+        <span class="ref-thumb">${icon(miss.kind === 'video' ? 'video' : miss.kind === 'audio' ? 'audio' : 'image')}</span>
+        <div class="ref-info">
+          <div class="ref-tags"><span class="rtag is-missing">${esc(miss.tag)}</span><span class="lbl" style="font-size:11px;color:var(--fault)">Missing slot</span></div>
+          <div class="ref-meta">Referenced in prompt, no file assigned yet.</div>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button type="button" class="btn sm" data-ghost-attach="${esc(miss.kind)}">+ Attach for ${esc(miss.tag)}</button>
+          ${fixLabel ? `<button type="button" class="btn sm" data-ghost-fix="${esc(miss.tag)}" data-ghost-to="${esc(unrefSameKind || sameKindValid[sameKindValid.length - 1])}">${esc(fixLabel)}</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }) : [];
+
+  listEl.innerHTML = cardsHtml.join('') + ghostHtml.join('');
+
+  // Bind card controls
+  listEl.querySelectorAll('[data-up]').forEach(b => b.onclick = () => moveRef(+b.dataset.up, +b.dataset.up - 1));
+  listEl.querySelectorAll('[data-dn]').forEach(b => b.onclick = () => moveRef(+b.dataset.dn, +b.dataset.dn + 1));
+  listEl.querySelectorAll('[data-drop]').forEach(b => b.onclick = () => {
+    const idx = +b.dataset.drop;
+    revokeRefThumb(refFiles[idx]);
+    refFiles.splice(idx, 1);
+    pendingSwap = null;
+    refreshRefUI();
+  });
+  listEl.querySelectorAll('[data-vmode]').forEach(s => s.onchange = e => {
+    const r = refFiles[+e.target.dataset.vmode];
+    const v = e.target.value;
+    const otherEffKind = x => (x.kind === 'video' && x.mode === 'video_audio_only') ? 'audio' : x.kind;
+    if (v === 'video_audio_only') {
+      const otherAud = refFiles.filter(x => x !== r && otherEffKind(x) === 'audio').length;
+      if (otherAud >= REF_LIMITS.audio) {
+        msg(`At most ${REF_LIMITS.audio} audio references (including extracted audio tracks).`, true);
+        paintRefs(); return;
+      }
+      r.mode = 'video_audio_only';
+      r.keep_video_audio = true;
+      if (!ROLE_GROUPS.audio.some(([k]) => k === r.role)) r.role = guessRole(r.file, 'video_audio_only');
+    } else {
+      const otherVid = refFiles.filter(x => x !== r && otherEffKind(x) === 'video').length;
+      if (r.mode === 'video_audio_only' && otherVid >= REF_LIMITS.video) {
+        msg(`At most ${REF_LIMITS.video} video references.`, true);
+        paintRefs(); return;
+      }
+      r.mode = 'video';
+      r.keep_video_audio = v !== 'video_silent';
+      if (!ROLE_GROUPS.video.some(([k]) => k === r.role)) r.role = guessRole(r.file, 'video');
+    }
+    refreshRefUI();
+  });
+  listEl.querySelectorAll('[data-role]').forEach(s => s.onchange = e => {
+    const r = refFiles[+e.target.dataset.role];
+    r.role = e.target.value;
+    if (r.role.startsWith('subject_') && !r.subjectGroup) r.subjectGroup = defaultGroupForRole(r.role);
+    refreshRefUI();
+  });
+  listEl.querySelectorAll('[data-group]').forEach(s => s.onchange = e => {
+    refFiles[+e.target.dataset.group].subjectGroup = +e.target.value;
+    refreshRefUI();
+  });
+  listEl.querySelectorAll('[data-start]').forEach(inp => {
+    inp.oninput = e => {
+      const r = refFiles[+e.target.dataset.start];
+      r.start = Math.max(0, Number(e.target.value) || 0);
+      runDiagnostics();
+    };
+    inp.onchange = () => paintRefs();
+  });
+  listEl.querySelectorAll('[data-end]').forEach(inp => {
+    inp.oninput = e => {
+      const r = refFiles[+e.target.dataset.end];
+      const raw = e.target.value.trim();
+      r.end = raw === '' ? null : Math.max(0, Number(raw) || 0);
+      runDiagnostics();
+    };
+    inp.onchange = () => paintRefs();
+  });
+  listEl.querySelectorAll('[data-fps]').forEach(inp => inp.oninput = e => {
+    const r = refFiles[+e.target.dataset.fps];
+    const raw = e.target.value.trim();
+    r.targetFps = raw === '' ? null : Math.max(1, Number(raw) || null);
+  });
+  listEl.querySelectorAll('[data-match-len]').forEach(b => b.onclick = () => {
+    const r = refFiles[+b.dataset.matchLen];
+    if (!r?.dur) return msg('Duration not ready yet for this file.', true);
+    const minOutDur = minFrameCount() / FPS;
+    const maxOutDur = engine?.max_duration_s ?? (maxFrameCount() / FPS);
+    const eff = Math.max(minOutDur, Math.min(maxOutDur, (r.end && r.end > r.start ? r.end : r.dur) - (r.start || 0)));
+    const want = Math.round(eff * FPS);
+    const opts = [...$('#frames').options].map(o => +o.value);
+    const best = opts.reduce((a, x) => Math.abs(x - want) < Math.abs(a - want) ? x : a, opts[0]);
+    $('#frames').value = best;
+    LS.set('frames', best);
+    refreshCost();
+    updateComposeSummary();
+    msg(`Length matched to ${(best / FPS).toFixed(1)} s (${best} frames) from ${r.file.name}.`);
+  });
+  listEl.querySelectorAll('[data-ghost-attach]').forEach(b => b.onclick = () => openScopedPicker(b.dataset.ghostAttach));
+  listEl.querySelectorAll('[data-ghost-fix]').forEach(b => b.onclick = () => replaceTagInPrompt(b.dataset.ghostFix, b.dataset.ghostTo));
+
+  // Drag reorder cards
+  listEl.querySelectorAll('.refcard[data-ref-idx]').forEach(card => {
+    const idx = +card.dataset.refIdx;
+    card.ondragstart = e => {
+      dragRefIdx = idx;
+      card.classList.add('is-dragging');
+      e.dataTransfer.setData('text/h3-ref', String(idx));
+      e.dataTransfer.effectAllowed = 'move';
+    };
+    card.ondragend = () => {
+      dragRefIdx = null;
+      listEl.querySelectorAll('.refcard').forEach(c => c.classList.remove('is-dragging', 'is-dragover'));
+    };
+    card.ondragover = e => {
+      if (dragRefIdx === null || dragRefIdx === idx) return;
+      e.preventDefault();
+      card.classList.add('is-dragover');
+    };
+    card.ondragleave = () => card.classList.remove('is-dragover');
+    card.ondrop = e => {
+      if (dragRefIdx === null || dragRefIdx === idx) return;
+      e.preventDefault();
+      card.classList.remove('is-dragover');
+      const from = dragRefIdx;
+      dragRefIdx = null;
+      moveRef(from, idx);
+    };
+  });
+}
+
+function addRefFileList(files) {
+  let added = 0;
+  for (const f of files) {
+    // Only deduplicate exact same File metadata including lastModified & type (not distinct files sharing name/size)
+    const exactDup = refFiles.some(r =>
+      r.file === f ||
+      (r.file.name === f.name && r.file.size === f.size && r.file.lastModified === f.lastModified && r.file.type === f.type)
+    );
+    if (exactDup) { msg(`Skipped exact duplicate file: ${f.name}`); continue }
+    const kind = kindOf(f);
+    if (!(kind in REF_LIMITS)) { msg(`${f.name}: only images, video or audio can be referenced.`, true); continue }
+    const effKind = r => (r.kind === 'video' && r.mode === 'video_audio_only') ? 'audio' : r.kind;
+    const curCount = refFiles.filter(r => effKind(r) === kind).length;
+    if (curCount >= REF_LIMITS[kind]) { msg(`Skipped ${f.name}: at most ${REF_LIMITS[kind]} ${kind} references.`, true); continue }
+    if (refFiles.length >= 12) { msg('Skipped: 12 references is the limit.', true); break }
+
+    const mode = kind;
+    const role = guessRole(f, mode);
+    const r = {
+      id: ++refUid,
+      file: f,
+      kind,
+      mode,
+      keep_video_audio: kind === 'video',
+      role,
+      subjectGroup: defaultGroupForRole(role, refFiles),
+      start: 0,
+      end: null,
+      targetFps: null,
+      hasAudio: undefined,
+      probing: false,
+      thumbUrl: null
+    };
+    refFiles.push(r);
+    probeLocalRef(r);
+    probeServerRef(r);
+    added++;
+  }
+  if (added) pendingSwap = null;
+  refreshRefUI();
+}
+
+function refsChanged() {
+  const picked = [...$('#refs').files];
+  if (picked.length) addRefFileList(picked);
+}
+$('#refs').onchange = refsChanged;
+
+function clearKeyframes() {
+  $$('.drop[data-slot="image"], .drop[data-slot="last_image"]').forEach(d => {
+    const inp = d.querySelector('input');
+    const slot = d.dataset.slot;
+    if (keyUrls[slot]) { URL.revokeObjectURL(keyUrls[slot]); keyUrls[slot] = null }
+    inp.value = '';
+    d.querySelectorAll('img,.x').forEach(n => n.remove());
+    d.querySelector('.dname').textContent = slot === 'image' ? 'First frame' : 'Last frame';
+  });
+  refreshRefUI();
+}
+
+function clearAllRefs() {
+  refFiles.forEach(revokeRefThumb);
+  refFiles = [];
+  pendingSwap = null;
+  refreshRefUI();
+}
+
+$('#clearRefsForKf').onclick = () => { clearAllRefs(); msg('Cleared references — First/Last frame mode ready.') };
+$('#clearKfForRefs').onclick = () => { clearKeyframes(); msg('Cleared keyframes — Reference mode ready.') };
+
+$$('.drop[data-slot="image"], .drop[data-slot="last_image"]').forEach(d => {
+  const inp = d.querySelector('input'), slot = d.dataset.slot;
+  const defLabel = slot === 'image' ? 'First frame' : 'Last frame';
+  const applyFile = f => {
+    if (keyUrls[slot]) { URL.revokeObjectURL(keyUrls[slot]); keyUrls[slot] = null }
+    d.querySelectorAll('img,.x').forEach(n => n.remove());
+    d.querySelector('.dname').textContent = f ? f.name : defLabel;
+    if (!f) { refreshRefUI(); return }
+    if (refFiles.length) {
+      clearAllRefs();
+      msg('Switched from References to First/Last frame.');
+    }
+    const u = URL.createObjectURL(f);
+    keyUrls[slot] = u;
+    const img = new Image(); img.src = u; img.alt = ''; d.prepend(img);
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'btn icon sm x';
+    x.setAttribute('aria-label', `Remove ${defLabel.toLowerCase()}`);
+    x.innerHTML = icon('x');
+    x.onclick = e => { e.preventDefault(); e.stopPropagation(); inp.value = ''; applyFile(null) };
+    d.append(x);
+    refreshRefUI();
+  };
+  inp.onchange = () => applyFile(inp.files[0] || null);
+  d.ondragover = e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); d.classList.add('is-over') } };
+  d.ondragleave = () => d.classList.remove('is-over');
+  d.ondrop = e => {
+    if (!e.dataTransfer.files?.length) return;
+    e.preventDefault(); d.classList.remove('is-over');
+    const f = e.dataTransfer.files[0];
+    if (kindOf(f) !== 'image') return msg('Keyframes must be image files.', true);
+    const dt = new DataTransfer(); dt.items.add(f); inp.files = dt.files;
+    applyFile(f);
+  };
+});
+
+// Drag & drop onto References dropzone
+const refDz = $('#refDropzone');
+refDz.ondragover = e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); refDz.classList.add('is-over') } };
+refDz.ondragleave = () => refDz.classList.remove('is-over');
+refDz.ondrop = e => {
+  if (!e.dataTransfer.files?.length) return;
+  e.preventDefault(); refDz.classList.remove('is-over');
+  if (['image', 'last_image'].some(n => $('#compose [name=' + n + ']').files[0])) {
+    clearKeyframes();
+    msg('Cleared keyframes and switched to References.');
+  }
+  addRefFileList([...e.dataTransfer.files]);
+};
+
+/* ---------------- prompt builder ---------------- */
+const INTENT_HINT = {
+  scene: '',
+  person: 'Attach 2–6 sharp, unfiltered photos of the person (front + 3/4 + side if they turn).',
+  recreate: 'Attach 1–4 sharp photos of the target person (front + 3/4) AND 1 reference video (<Video 1>). Leave Aspect on Auto to match the video orientation; start with 124–175 frames & 12 steps to test face lock first.',
+  product: 'Attach 2–4 photos from different angles on a plain background. Keep the object small in frame so the whole shape is visible.'
+};
+const B = {
+  scene: '', shots: [], style: 'Live-action, cinematic', cam: '', lang: 'English', intent: 'scene',
+  speaker: '', line: '', text: '', sound: '', music: ''
+};
+function loadDraft() {
+  try { Object.assign(B, JSON.parse(LS.get('builder', '{}'))) } catch {}
+  if (!B.shots.length) B.shots = [{ text: '' }];
+}
+function saveDraft() { LS.set('builder', JSON.stringify(B)) }
+function updateIntentHint() {
+  const el = $('#bIntentHint');
+  if (!el) return;
+  el.textContent = INTENT_HINT[B.intent] || '';
+  el.style.display = B.intent === 'scene' ? 'none' : '';
+}
+function shotsUI() {
+  const w = $('#bShots');
+  w.innerHTML = B.shots.map((s, i) => `<div class="shot" data-i="${i}">
+    <div class="sh"><span class="lbl">${i === 0 ? 'Shot 1 · opening' : 'Shot ' + (i + 1)}</span>
+      ${i ? `<button class="btn sm danger" type="button" data-del="${i}" aria-label="Remove shot ${i + 1}">${icon('x')}</button>` : ''}</div>
+    <textarea data-shot="${i}" style="min-height:64px" placeholder="${i === 0 ? 'What happens, in order. Who moves, what changes.' : 'What the cut reveals. New subject, space or state.'}">${esc(s.text)}</textarea>
+  </div>`).join('');
+  w.querySelectorAll('textarea').forEach(t => t.oninput = e => {
+    B.shots[+e.target.dataset.shot].text = e.target.value;
+    builderPolished = false;
+    saveDraft(); preview();
+  });
+  w.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+    B.shots.splice(+b.dataset.del, 1);
+    builderPolished = false;
+    shotsUI(); saveDraft(); preview();
+  });
+}
+function bindBuilderField(id, key) {
+  const el = $('#' + id);
+  el.value = B[key] ?? '';
+  el.oninput = el.onchange = e => {
+    B[key] = e.target.value;
+    builderPolished = false;
+    if (key === 'intent') updateIntentHint();
+    saveDraft(); preview();
+  };
+}
+function workflowNow() {
+  if (refFiles.length) return 'ref2va';
+  if (['image', 'last_image'].some(n => $('#compose [name=' + n + ']').files[0])) return 'fl2va';
+  return 't2va';
+}
+function updateWorkflowBadges() {
+  const wf = workflowNow();
+  for (const el of [$('#wfBadge'), $('#bMode')]) {
+    if (!el) continue;
+    el.textContent = wf;
+    el.className = 'chip ' + wf;
+  }
+}
+function buildPrompt() {
+  const wf = workflowNow();
+  const frames = +$('#frames').value || 124, dur = (frames / FPS).toFixed(2);
+  const hasFirst = !!$('#compose [name=image]').files[0];
+  const hasLast = !!$('#compose [name=last_image]').files[0];
+  const style = B.style.trim(), scene = B.scene.trim(), cam = B.cam.trim();
+  const shots = B.shots.map(s => (s.text || '').trim()).filter(Boolean);
+  if (!shots.length && scene) shots.push('The scene holds as described, with natural movement and reaction.');
+  if (!shots.length) shots.push(scene || 'A single continuous shot.');
+  const text = B.text.trim(), line = B.line.trim(), spk = B.speaker.trim();
+  const sound = B.sound.trim() || 'Natural ambience and physical action sounds continue underneath.';
+  const music = B.music.trim() || 'N/A';
+  const cut = i => mmss(Math.round((frames * i) / Math.max(2, shots.length)));
+  const dialogue = line ? `${spk ? spk + ' (S1) says' : 'A voice (S1) says'}: <d>[${B.lang}] ${line}</d>` : '';
+  const body = shots.map((t, i) => {
+    const head = i === 0 ? '[Shot 1]' : `[Shot ${i + 1}] At ${cut(i)}, the camera cuts to`;
+    const bits = [head, i === 0 ? `${style}. ${scene ? scene + '.' : ''}` : '', i === 0 && cam ? `The camera ${cam}.` : '', t,
+      i === shots.length - 1 ? dialogue : '', text && i === 0 ? `On screen, a sign reads "${text}".` : ''];
+    return bits.filter(Boolean).join(' ').replace(/\s+([.,;])/g, '$1');
+  }).join(' ');
+
+  if (wf === 'ref2va') {
+    const tagged = resolveRefTags(refFiles);
+    const { defsText, retText } = generateRefBindings(tagged, B.intent);
+    const editVid = tagged.find(t => t.r.role === 'video_edit') || (B.intent === 'recreate' ? tagged.find(t => t.mode === 'video') : null);
+    const personGroup = tagged.find(t => t.r.role === 'subject_person')?.subjectGroup;
+    const placeGroup = tagged.find(t => t.r.role === 'subject_place')?.subjectGroup;
+    const placeNote = placeGroup ? ` The setting is <Subject ${placeGroup}>, whose facade and signage are visible in the background.` : '';
+    const recreateNote = editVid && personGroup
+      ? ` The target video recreates the exact scene, camera movement and framing of ${editVid.tag}, with <Subject ${personGroup}> in place of the original person, performing the exact movements, posture and expressions while matching ${editVid.tag}'s lighting, shadows and color grade, keeping sharp focus on <Subject ${personGroup}>'s face.`
+      : '';
+    const summaryPrefix = editVid ? '[video editing]' : '[reference generation]';
+    const summaryBody = editVid
+      ? `The target video is an edited version of ${editVid.tag}${personGroup ? `, replacing the original person with <Subject ${personGroup}>` : ''} while keeping the choreography, framing and lighting intact.${scene ? ' ' + scene : ''}`
+      : `${style}. ${scene || 'The target video follows the references attached.'}`;
+    return [
+      `subject_definitions: ${defsText}`, ``,
+      `summary: ${summaryPrefix} ${summaryBody}`, ``,
+      `retention_analysis: ${retText}`, ``,
+      `detailed_description: ${body}${recreateNote}${placeNote}`, ``,
+      `overall_soundscape: ${sound}`, ``,
+      `non_diegetic_music: ${music}`
+    ].join('\n');
+  }
+
+  const head = wf === 'fl2va'
+    ? hasLast && hasFirst
+      ? `How the reference pictures align with the target video — <Picture 1> (from [Shot 1]) aligns with the 0.00-second mark of the target video; <Picture 2> (from [Shot ${shots.length}]) aligns with the ${dur}-second mark of the target video.`
+      : hasLast
+        ? `How the reference pictures align with the target video — <Picture 1> (from [Shot ${shots.length}]) aligns with the ${dur}-second mark of the target video.`
+        : `For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.`
+    : '';
+  return [head, head ? '' : null,
+    `integrated_multimodal_description: ${body}`, ``,
+    `overall_soundscape: ${sound}`, ``,
+    `non_diegetic_music: ${music}`].filter(x => x !== null).join('\n');
+}
+
+function preview() {
+  if (!builderPolished) {
+    const p = buildPrompt();
+    $('#bPrev').textContent = p;
+    LS.set('draftPrompt', p);
+  }
+  const prevLen = $('#bPrev').textContent.length;
+  updateWorkflowBadges();
+  const needRefs = (B.intent === 'person' || B.intent === 'product' || B.intent === 'recreate') && !refFiles.length;
+  const needVid = B.intent === 'recreate' && !refFiles.some(r => r.kind === 'video');
+  $('#bHint').textContent = needVid
+    ? 'Attach a reference video (<Video 1>) and person photo(s) (<Picture 1>)'
+    : needRefs
+      ? 'Attach the reference files — this prompt needs them'
+      : `${prevLen} characters`;
+}
+
+function openBuilder() {
+  loadDraft();
+  builderPolished = false;
+  shotsUI();
+  bindBuilderField('bScene', 'scene');
+  bindBuilderField('bStyle', 'style');
+  bindBuilderField('bCam', 'cam');
+  bindBuilderField('bLang', 'lang');
+  bindBuilderField('bIntent', 'intent');
+  bindBuilderField('bSpeaker', 'speaker');
+  bindBuilderField('bLine', 'line');
+  bindBuilderField('bText', 'text');
+  bindBuilderField('bSound', 'sound');
+  bindBuilderField('bMusic', 'music');
+  updateIntentHint();
+  preview();
+  $('#dlg').showModal();
+}
+
+$('#craft').onclick = openBuilder;
+$('#bClose').onclick = () => $('#dlg').close();
+$('#bAddShot').onclick = () => { if (B.shots.length < 4) { B.shots.push({ text: '' }); builderPolished = false; shotsUI(); preview() } };
+$('#bUse').onclick = () => {
+  $('#prompt').value = $('#bPrev').textContent || buildPrompt();
+  $('#prompt').dispatchEvent(new Event('input'));
+  $('#dlg').close();
+  $('#prompt').focus();
+};
+$('#bCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('#bPrev').textContent || buildPrompt()); $('#bHint').textContent = 'Copied' }
+  catch { $('#bHint').textContent = 'Copy blocked; select the preview' }
+};
+
+function buildDetailedTagSummary() {
+  return resolveRefTags(refFiles).map(t => {
+    const r = t.r;
+    const roleName = roleLabelFor(t.kind, t.mode, r.role);
+    const meta = [
+      `role: ${roleName}`,
+      t.subjectGroup ? `group: <Subject ${t.subjectGroup}>` : '',
+      t.kind === 'video' ? `mode: ${t.mode === 'video_audio_only' ? 'Audio Only' : (r.keep_video_audio === false ? 'Video Silent' : 'Video + Audio')}` : '',
+      r.w && r.h ? `${r.w}x${r.h}` : '',
+      r.dur ? `${r.dur.toFixed(1)}s` : '',
+      (r.start || r.end) ? `trim: ${r.start || 0}s..${r.end ?? 'end'}` : '',
+      r.targetFps ? `fps: ${r.targetFps}` : ''
+    ].filter(Boolean).join(', ');
+    const tagStr = t.audioTag ? `${t.tag} + ${t.audioTag}` : t.tag;
+    return `${tagStr} [${meta}] — ${r.file.name}`;
+  }).join('\n');
+}
+
+async function runPolish(draft, onDone, btn) {
+  if (!draft.trim()) return msg('Write a prompt or rough brief first before polishing.', true);
+  const prevHtml = btn.innerHTML;
+  btn.disabled = true; btn.textContent = 'Polishing…';
+  try {
+    const res = await api('/api/prompt/polish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        draft,
+        mode: workflowNow(),
+        refs: buildDetailedTagSummary(),
+        aspect: $('#aspect').value,
+        frames: +$('#frames').value || 124,
+        intent: B.intent
+      })
+    });
+    if (res.prompt) onDone(res.prompt);
+  } catch (e) { msg('Polish failed: ' + e.message, true) }
+  finally { btn.disabled = false; btn.innerHTML = prevHtml }
+}
+
+$('#pPolish').onclick = () => runPolish($('#prompt').value, p => {
+  $('#prompt').value = p;
+  $('#prompt').dispatchEvent(new Event('input'));
+  msg('Prompt polished by Qwen.');
+}, $('#pPolish'));
+
+$('#bPolish').onclick = () => runPolish($('#bPrev').textContent || buildPrompt(), p => {
+  builderPolished = true;
+  $('#bPrev').textContent = p;
+  $('#bHint').textContent = `Polished (${p.length} chars) — click Use this prompt or Copy`;
+}, $('#bPolish'));
+
+/* ---------------- station strip ---------------- */
+const liveFor = id => {
+  const l = lanes.find(x => x.running && x.running.id === id);
+  return l ? l.running : null;
+};
+
+function strip() {
+  const L = lanes.length ? lanes : (health ? [health] : []);
+  const m = $('#sModel');
+  if (!L.length) {
+    m.innerHTML = '<span class="lamp off"></span><span>Not connected</span>';
+    $('#sAir').textContent = 'Idle'; $('#sAirLamp').hidden = true;
+    $('#sQueue').textContent = 'Queued 0'; $('#sGpu').textContent = '';
+    $('#go').textContent = 'Generate';
+    return;
+  }
+  const label = l => l.model === 'ready' ? 'ready' : l.model === 'loading' ? 'loading' : l.model === 'unreachable' ? 'offline' : 'failed';
+  const lampOf = l => l.model === 'ready' ? 'ready' : l.model === 'loading' ? 'warm' : l.model === 'unreachable' ? 'off' : 'onair';
+  const loading = L.some(l => l.model === 'loading');
+  const vs = [...new Set(L.map(l => l.version).filter(Boolean))];
+  const drift = vs.length > 1 ? `Version mismatch ${vs.join(' / ')}` : '';
+  m.innerHTML = L.map(l =>
+    `<span class="lane" title="${esc((l.lane || '?').toUpperCase())}: ${esc(l.model)}${l.version ? ' v' + esc(l.version) : ''}">` +
+    `<span class="lamp ${lampOf(l)}"></span>` +
+    `<span>${esc((l.lane || '?').toUpperCase())}</span>` +
+    `<span class="lbl">${esc(label(l))}</span></span>`).join('') +
+    (drift ? `<span class="lane" style="color:var(--warm)">${icon('warn')}<span class="lbl" style="color:var(--warm)">${esc(drift)}</span></span>` : '');
+  m.title = L.map(l => `${(l.lane || '?').toUpperCase()}: ${l.model}${l.version ? ' v' + l.version : ''}`).join('\n');
+
+  const active = L.filter(l => l.running);
+  const held = active.filter(l => l.running.stage === 'paused').length;
+  const moving = active.length - held;
+  $('#sAir').textContent = active.length
+    ? [moving ? `${moving} rendering` : '', held ? `${held} paused` : ''].filter(Boolean).join(' · ')
+    : 'Idle';
+  $('#sAirLamp').hidden = !active.length;
+
+  const q = jobs.filter(j => j.status === 'queued');
+  const free = Math.max(1, L.filter(l => l.model === 'ready').length);
+  const qEta = q.reduce((s, j) => s + (j.eta_s || 0), 0);
+  $('#sQueue').textContent = `Queued ${q.length}` + (q.length && qEta ? ` · ~${short(qEta / free)}` : '');
+
+  $('#sGpu').innerHTML = L.map(l => {
+    const g = l.gpu || {};
+    const lane = (l.lane || '?').toUpperCase();
+    if (g.total_gb == null) return `<span class="gchip none" title="${esc(lane)}: no GPU figure (${esc(l.model)})"><span class="gl">${esc(lane)}</span><span class="gbar"><i style="width:0%"></i></span><span>—</span></span>`;
+    const used = Number(g.used_gb) || 0, total = Number(g.total_gb) || 0;
+    const pct = total ? Math.min(100, Math.round(used / total * 100)) : 0;
+    const tone = pct >= 95 ? 'fault' : pct >= 80 ? 'warm' : '';
+    return `<span class="gchip ${tone}" title="${esc(lane)}: ${used.toFixed(1)} of ${total.toFixed(1)} GB (${pct}%)">` +
+      `<span class="gl">${esc(lane)}</span>` +
+      `<span class="gbar"><i style="width:${pct}%"></i></span>` +
+      `<span>${used.toFixed(1)}/${total.toFixed(1)}</span></span>`;
+  }).join('');
+
+  $('#go').textContent = loading ? 'Queue job (model loading)' : 'Generate';
+}
+
+/* ---------------- adaptive program monitor & HUD ---------------- */
+function setMonitorAspect(w, h) {
+  const frame = $('#monFrame');
+  if (!frame) return;
+  if (!w || !h) {
+    frame.style.setProperty('--mon-ar', '16 / 9');
+    frame.classList.remove('is-portrait', 'is-square');
+    return;
+  }
+  const ar = w / h;
+  frame.style.setProperty('--mon-ar', `${w} / ${h}`);
+  frame.classList.toggle('is-portrait', ar < 0.9);
+  frame.classList.toggle('is-square', ar >= 0.9 && ar <= 1.1);
+}
+
+function renderHud(j, live) {
+  const left = $('#hudLeft'), tcEl = $('#hudTc');
+  if (!KEY && !health) {
+    left.innerHTML = `<span class="hud-status lbl"><span class="lamp off"></span><span>Authentication required</span></span>`;
+    tcEl.textContent = '00:00:00:00';
+    return;
+  }
+  if (!j) {
+    left.innerHTML = `<span class="hud-status lbl"><span class="lamp off"></span><span>Standby</span></span>`;
+    tcEl.textContent = '00:00:00:00';
+    return;
+  }
+  const paused = j.status === 'running' && live?.stage === 'paused';
+  const lamp = j.status === 'done' ? 'ready' : j.status === 'running' ? (paused ? 'warm' : 'onair') : j.status === 'queued' ? 'off' : '';
+  const statusLabel = j.status === 'done' ? 'Ready'
+    : j.status === 'running' ? (paused ? 'Paused' : 'On air')
+    : j.status === 'queued' ? 'Queued'
+    : j.status === 'cancelled' ? 'Stopped' : 'Fault';
+  const w = j.media?.width || j.target_width;
+  const h = j.media?.height || j.target_height;
+  left.innerHTML = `
+    <span class="hud-status lbl"><span class="lamp ${lamp}"></span><span>${statusLabel}</span></span>
+    <span class="tc jnum">#${j.num ?? '—'}</span>
+    <span class="chip ${j.workflow}">${esc(j.workflow)}</span>
+    <span class="tc hint" id="hudRes">${w && h ? `${w}×${h}` : ''}</span>
+    ${j.lane ? `<span class="lbl hint">Lane ${esc(j.lane.toUpperCase())}</span>` : ''}`;
+  if (j.status === 'done') {
+    const v = $('#vid');
+    const curFrame = v ? Math.floor(v.currentTime * FPS) : 0;
+    tcEl.textContent = `${tc(curFrame)} / ${tc(j.frames || 124)}`;
+  } else if (j.status === 'running') {
+    const t = live ? liveNow(live) : { elapsed: Date.now() / 1000 - (j.started || Date.now() / 1000) };
+    tcEl.textContent = `${hms(t.elapsed)} ELAPSED`;
+  } else {
+    tcEl.textContent = tc(j.frames || 124);
+  }
+}
+
+function applyOsdVisibility() {
+  const burn = $('#burn');
+  if (burn) burn.hidden = !osdOn;
+  const tally = $('#monTally');
+  if (tally) tally.hidden = !osdOn;
+  $('#osdToggle').setAttribute('aria-pressed', String(osdOn));
+}
+
+$('#osdToggle').onclick = () => {
+  osdOn = !osdOn;
+  LS.set('osd', osdOn ? '1' : '0');
+  applyOsdVisibility();
+};
+
+function monitor() {
+  const j = jobs.find(x => x.id === sel), frame = $('#monFrame'), stage = $('#monStage');
+  const live = liveFor(sel);
+  const sig = (j ? [j.id, j.status, j.lane || '', j.output || '', j.poster || '', j.media?.width || '', j.media?.height || '', j.num || ''].join('|') : '') +
+    (live ? live.stage : '') + ((KEY || health) ? '' : '|gate');
+
+  const nextSlateSig = j ? [
+    j.id, j.status, j.name || '', j.title || '', j.folder || '', j.prompt || '',
+    j.error || '', (j.takes || []).length, j.num || '', j.media?.width || '',
+    j.vram_peak_gb || '', j.audio?.peak_db ?? ''
+  ].join('|') : '';
+
+  if (sig === monSig) {
+    tickLive();
+    if (nextSlateSig !== slateSig && !(slateEditing && editingJobId === j?.id)) {
+      slateSig = nextSlateSig;
+      slate(j);
+    }
+    return;
+  }
+
+  cancelAnimationFrame(monRaf);
+  monRaf = 0;
+
+  const cut = monSig && j && j.status === 'done' && monSig.startsWith(j.id + '|running');
+  monSig = sig;
+  slateSig = nextSlateSig;
+
+  if (!KEY && !health) {
+    frame.classList.add('is-card');
+    setMonitorAspect(null, null);
+    frame.innerHTML = `<div class="card">${BARS}<p>Connect to the H3 worker on Inwin. Paste the API key from <span class="tc">~/h3.env</span>.</p>
+      <form class="gate" id="gate"><input type="password" id="gateKey" placeholder="API key" aria-label="API key" autocomplete="off"><button class="btn" type="submit">Connect</button></form></div>`;
+    $('#gate').onsubmit = e => { e.preventDefault(); setKey($('#gateKey').value.trim()) };
+  } else if (!j) {
+    frame.classList.add('is-card');
+    setMonitorAspect(null, null);
+    frame.innerHTML = `<div class="card">${BARS}<p class="big lbl">No clips yet</p>
+      <p>Write a prompt in the deck below or open the Builder, then press Generate. Two lanes render in parallel, one per GPU.</p></div>`;
+  } else if (j.status === 'done') {
+    frame.classList.remove('is-card');
+    const w = j.media?.width || j.target_width || 1344;
+    const h = j.media?.height || j.target_height || 768;
+    setMonitorAspect(w, h);
+    const posterAttr = j.poster ? ` poster="${url(j.id, j.poster)}"` : '';
+    frame.innerHTML = `<video id="vid" controls playsinline preload="metadata"${posterAttr} src="${url(j.id, j.output)}"></video>
+      <span class="tally lbl" id="monTally" ${osdOn ? '' : 'hidden'}><span class="lamp ready"></span>#${j.num ?? '—'} · ${esc(j.workflow)}</span>
+      <span class="burn tc" id="burn" ${osdOn ? '' : 'hidden'}>${tc(0)}</span>`;
+    const v = $('#vid'), b = $('#burn'), hudTc = $('#hudTc');
+    const tickVid = () => {
+      if (!$('#vid') || $('#vid') !== v) return;
+      const cur = Math.floor((v.currentTime || 0) * FPS);
+      if (b) b.textContent = tc(cur);
+      if (hudTc) hudTc.textContent = `${tc(cur)} / ${tc(j.frames || 124)}`;
+      if (!v.paused && !v.ended) monRaf = requestAnimationFrame(tickVid);
+    };
+    v.onloadedmetadata = () => {
+      if (v.videoWidth && v.videoHeight) {
+        setMonitorAspect(v.videoWidth, v.videoHeight);
+        const hr = $('#hudRes');
+        if (hr) hr.textContent = `${v.videoWidth}×${v.videoHeight}`;
+      }
+      tickVid();
+    };
+    v.onplay = () => { cancelAnimationFrame(monRaf); tickVid() };
+    v.onpause = v.onended = () => { cancelAnimationFrame(monRaf); tickVid() };
+    v.onseeked = v.ontimeupdate = tickVid;
+  } else if (j.status === 'running') {
+    frame.classList.add('is-card');
+    setMonitorAspect(null, null);
+    const p = live || { stage: 'denoise', step: j.step || 0, steps: j.total_steps || j.steps, elapsed: Date.now() / 1000 - (j.started || Date.now() / 1000), eta: j.eta_s };
+    const pct = Math.min(99, Math.round((p.step / Math.max(1, p.steps)) * 100));
+    const t = live ? liveNow(live) : { elapsed: p.elapsed, eta: p.eta || 0 };
+    const paused = p.stage === 'paused';
+    frame.innerHTML = `<span class="tally lbl"><span class="lamp ${paused ? 'warm' : 'onair'}"></span>${paused ? 'Held · paused' : 'On air · rendering'}</span>
+      <div class="card"><div class="prog">
+        <div class="row"><span class="lbl">${paused ? 'Paused' : (STAGE[p.stage] || p.stage)}</span><span class="tc"><span id="pPace"></span> <span id="pPct">${pct}%</span></span></div>
+        <div class="bar ${p.stage === 'denoise' || paused ? '' : 'indet'}"><i id="pBar" style="width:${pct}%"></i></div>
+        <div class="row"><span class="tc" id="pStep">step ${p.step} / ${p.steps}</span><span class="tc" id="pTime">${hms(t.elapsed)} elapsed</span></div>
+        <div class="row"><span class="hint">Lane ${(j.lane || '?').toUpperCase()} · ${(j.frames / FPS).toFixed(1)} s clip · ${j.steps} steps</span><span class="tc" id="pEta">${paused ? '' : (t.eta ? '~' + short(t.eta) + ' left' : '')}</span></div>
+      </div>
+      <div class="acts" style="justify-content:center">
+        <button class="btn" type="button" id="togglePause" title="Takes effect at the next step boundary">${paused ? icon('play') + 'Resume' : icon('pause') + 'Pause'}</button>
+        <button class="btn danger" type="button" id="cancelJob">${icon('stop')}Cancel</button>
+      </div></div>`;
+    $('#togglePause').onclick = async () => {
+      try { await api(`/api/jobs/${j.id}/${paused ? 'resume' : 'pause'}`, { method: 'POST' }); monSig = ''; await poll() }
+      catch (e) { msg(e.message, true) }
+    };
+    $('#cancelJob').onclick = async () => {
+      const ok = await askConfirm({
+        title: `Cancel #${j.num ?? '—'}?`,
+        body: `Cancel "${clipName(j)}"?`,
+        note: 'Stops at the next denoising step boundary.',
+        confirmLabel: 'Cancel job'
+      });
+      if (!ok) return;
+      try { await api(`/api/jobs/${j.id}/cancel`, { method: 'POST' }); poll() } catch (e) { msg(e.message, true) }
+    };
+  } else if (j.status === 'queued') {
+    frame.classList.add('is-card');
+    setMonitorAspect(null, null);
+    const ahead = jobs.filter(x => x.status === 'queued' && x.created < j.created).length;
+    const free = lanes.filter(l => l.model === 'ready' && !l.running).length;
+    frame.innerHTML = `<span class="tally lbl"><span class="lamp off"></span>Queued${ahead ? ' · ' + ahead + ' ahead' : ''}</span>
+      <div class="card"><p class="big lbl">Waiting</p><p>${free ? 'Starts now on a free lane.' : 'Starts when a lane finishes the job ahead of it.'}${j.eta_s ? ' Estimated ' + short(j.eta_s) + ' of GPU time.' : ''}</p>
+      <button class="btn danger" type="button" id="cancelJob">${icon('stop')}Remove from queue</button></div>`;
+    $('#cancelJob').onclick = async () => {
+      try { await api(`/api/jobs/${j.id}/cancel`, { method: 'POST' }); poll() } catch (e) { msg(e.message, true) }
+    };
+  } else if (j.status === 'cancelled') {
+    frame.classList.add('is-card');
+    setMonitorAspect(null, null);
+    frame.innerHTML = `<span class="tally lbl"><span class="lamp"></span>Cancelled</span><div class="card"><p class="big lbl">Stopped</p><p>This job was cancelled before it finished.</p></div>`;
+  } else {
+    frame.classList.add('is-card');
+    setMonitorAspect(null, null);
+    frame.innerHTML = `<span class="tally lbl"><span class="lamp"></span>Error</span><div class="card"><p class="big lbl">No signal</p><p>This job failed. The reason is under the monitor.</p></div>`;
+  }
+
+  renderHud(j, live);
+  applyOsdVisibility();
+  if (cut) { stage.classList.remove('cut'); void stage.offsetWidth; stage.classList.add('cut') }
+  if (!(slateEditing && editingJobId === j?.id)) slate(j);
+}
+
+function liveNow(r) {
+  const drift = (Date.now() - pollAt) / 1000;
+  return { elapsed: (r.elapsed || 0) + drift, eta: Math.max(0, (r.eta || 0) - drift) };
+}
+
+function tickLive() {
+  const r = liveFor(sel);
+  if (!r) return;
+  const pct = Math.min(99, Math.round((r.step / Math.max(1, r.steps)) * 100));
+  const t = liveNow(r);
+  const set = (id, v) => { const e = $('#' + id); if (e && e.textContent !== v) e.textContent = v };
+  set('pPct', pct + '%');
+  set('pStep', `step ${r.step} / ${r.steps}`);
+  set('pTime', hms(t.elapsed) + ' elapsed');
+  set('pPace', r.sec_per_step ? `${r.sec_per_step}s/step` : '');
+  set('pEta', t.eta ? '~' + short(t.eta) + ' left' : '');
+  set('hudTc', `${hms(t.elapsed)} ELAPSED`);
+  const bar = $('#pBar'); if (bar && r.stage === 'denoise') bar.style.width = pct + '%';
+}
+
+/* ---------------- titles ---------------- */
+function guessTitle(p) {
+  let t = String(p || '');
+  // Extract detailed_description or summary or integrated_multimodal_description if structured ref2va/base prompt
+  const det = t.match(/detailed_description:\s*([\s\S]*)/i);
+  const sum = t.match(/summary:\s*([\s\S]*?)(?=\n\s*(?:retention_analysis:|detailed_description:|overall_soundscape:|non_diegetic_music:)|$)/i);
+  const imm = t.match(/integrated_multimodal_description:\s*([\s\S]*)/i);
+  if (det) t = det[1];
+  else if (imm) t = imm[1];
+  else if (sum) t = sum[1];
+  else {
+    t = t
+      .replace(/subject_definitions:[\s\S]*?(?=(?:summary:|retention_analysis:|detailed_description:|integrated_multimodal_description:|$))/i, '')
+      .replace(/retention_analysis:[\s\S]*?(?=(?:detailed_description:|integrated_multimodal_description:|overall_soundscape:|$))/i, '')
+      .replace(/summary:\s*/i, '');
+  }
+  t = t
+    .replace(/^(?:How the reference pictures align with the target video\s*[—–-][^\n]*|For the target video,\s*at 0\.00 seconds[^\n]*)/i, '')
+    .replace(/\[(video editing|reference generation|Shot\s*\d+)\]/gi, '')
+    .replace(/overall_soundscape:[\s\S]*/i, '')
+    .replace(/non_diegetic_music:[\s\S]*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  t = t.replace(/^(?:live-action|3d cg|2d-animated|claymation|watercolor animation|vintage film)(?:,\s*(?:cinematic|documentary|handheld|natural light|cel-shaded|16mm grain))*\s*[.,]\s*/i, '').trim();
+  const first = t.split(/(?<=[.!?])\s/)[0] || t;
+  t = first.replace(/^[,;:\s—–-]+/, '').trim();
+  return t.length > 90 ? t.slice(0, 88).replace(/[,;:\s]+\S*$/, '') + '…' : (t || 'Untitled clip');
+}
+
+/* ---------------- compact clip slate ---------------- */
+function slate(j) {
+  const s = $('#slate');
+  if (!j) { s.innerHTML = ''; slateEditing = null; editingJobId = null; return }
+  if (editingJobId !== j.id) { slateEditing = null; editingJobId = j.id }
+  const resolvedInputs = resolveJobInputTags(j);
+  const run = j.started ? hms((j.finished || Date.now() / 1000) - j.started) : '';
+  const m = j.media || {};
+  const folders = [...new Set(jobs.map(x => x.folder).filter(Boolean))].sort();
+  const longPrompt = (j.prompt || '').length > 260 || (j.prompt || '').split('\n').length > 4;
+
+  const mediaHtml = resolvedInputs.map(inp => {
+    const u = url(j.id, inp.file);
+    const metaBits = [
+      inp.roleLabel,
+      inp.subjectGroup ? `<Subject ${inp.subjectGroup}>` : '',
+      inp.width && inp.height ? `${inp.width}×${inp.height}` : '',
+      inp.duration ? `${inp.duration}s` : '',
+      inp.kind === 'video' ? (inp.has_audio ? (j.keep_video_audio === false ? 'muted' : 'has audio') : 'silent') : '',
+      (inp.start || inp.end) ? `${inp.start || 0}s..${inp.end ?? 'end'}` : '',
+      inp.fps ? `${inp.fps}fps` : ''
+    ].filter(Boolean).join(' · ');
+    const badge = `<div class="inp-head"><span class="rtag">${esc(inp.tag)}</span>${inp.audioTag ? `<span class="rtag">${esc(inp.audioTag)}</span>` : ''}<span class="lbl" style="font-size:11px;color:var(--i90)">${esc(inp.roleLabel)}</span></div>`;
+    const cap = `<figcaption>${badge}<span>${esc(inp.name)}${metaBits ? ' · ' + esc(metaBits) : ''}</span></figcaption>`;
+    return inp.kind === 'image'
+      ? `<figure><a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="${esc(inp.name)}" loading="lazy"></a>${cap}</figure>`
+      : inp.kind === 'video'
+        ? `<figure><video controls playsinline preload="metadata" src="${u}"></video>${cap}</figure>`
+        : `<figure><audio controls preload="none" src="${u}"></audio>${cap}</figure>`;
+  }).join('');
+
+  s.innerHTML = `
+    <div class="slate-head">
+      <div class="slate-title-wrap" id="slateTitleWrap">
+        <h2 class="${j.status === 'error' ? 'struck' : ''}">${esc(clipName(j))}</h2>
+        <button class="btn icon sm" type="button" id="rename" aria-label="Rename clip" title="Rename clip">${icon('pen')}</button>
+      </div>
+      <div class="slate-folder-box">
+        <select class="sortsel" id="foldSet" aria-label="Clip folder">
+          <option value="">No folder</option>
+          ${folders.map(f => `<option value="${esc(f)}"${f === j.folder ? ' selected' : ''}>${esc(f)}</option>`).join('')}
+          <option value="__new__">New folder…</option>
+        </select>
+        <div class="slate-inline" id="foldNewWrap" hidden>
+          <input type="text" id="foldNewInput" placeholder="Folder name" aria-label="New folder name" style="width:150px;padding:5px 8px;font-size:13px">
+          <button class="btn sm" type="button" id="foldNewSave">Add</button>
+          <button class="btn sm" type="button" id="foldNewCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="acts">
+      ${j.status === 'done' ? `<a class="btn sm" href="${url(j.id, j.output)}" download="h3-${j.id.slice(0, 8)}.mp4">${icon('dl')}Download</a>` : ''}
+      ${j.status === 'done' || j.status === 'error' || j.status === 'cancelled' ? `<button class="btn sm" type="button" id="again">${icon('reuse')}Run again</button>` : ''}
+      <button class="btn sm" type="button" id="reuse">Load into New Job</button>
+      ${j.status === 'done' && j.output ? `<button class="btn sm" type="button" id="useOutRef">${icon('link')}Use output as ref</button>` : ''}
+      ${j.status !== 'running' ? `<button class="btn sm danger" type="button" id="del">${icon('trash')}Delete</button>` : ''}
+    </div>
+
+    <div class="facts">
+      <span class="chip ${j.workflow}">${esc(j.workflow)}</span>
+      <span><span class="lbl">Job</span><span class="tc jnum">#${j.num ?? '—'}</span></span>
+      <span><span class="lbl">Length</span><span class="tc">${tc(j.frames || 124)}</span></span>
+      <span><span class="lbl">Steps</span><span class="tc">${j.steps}</span></span>
+      <span><span class="lbl">Seed</span><span class="tc">${j.seed}</span></span>
+      ${m.width ? `<span><span class="lbl">Frame</span><span class="tc">${m.width}×${m.height}</span></span>` : (j.target_width ? `<span><span class="lbl">Target</span><span class="tc">${j.target_width}×${j.target_height}</span></span>` : '')}
+      ${j.aspect && j.aspect !== 'auto' ? `<span><span class="lbl">Aspect</span><span class="tc">${esc(j.aspect)}</span></span>` : ''}
+      ${j.video_start ? `<span><span class="lbl">Start</span><span class="tc">+${j.video_start} s</span></span>` : ''}
+      ${j.audio ? `<span><span class="lbl">Audio</span><span class="tc">${j.audio.peak_db} dBFS</span></span>` : ''}
+      ${j.audio?.gain_db ? `<span><span class="lbl">Gain</span><span class="tc">${j.audio.gain_db > 0 ? '+' : ''}${j.audio.gain_db} dB</span></span>` : ''}
+      ${j.pin ? `<span><span class="lbl">Pinned</span><span class="tc">${esc(j.pin.toUpperCase())}</span></span>` : ''}
+      ${run ? `<span><span class="lbl">${j.finished ? 'Run' : 'Elapsed'}</span><span class="tc">${run}</span></span>` : ''}
+      ${j.vram_peak_gb ? `<span><span class="lbl">VRAM</span><span class="tc">${j.vram_peak_gb} GB</span></span>` : ''}
+      ${(j.takes || []).length ? `<span><span class="lbl">Takes</span><span class="tc">${(j.takes || []).length + 1}</span></span>` : ''}
+      <span><span class="lbl">Queued</span><span class="tc">${new Date((j.created || 0) * 1000).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span></span>
+    </div>
+
+    ${j.frames_note ? `<p class="hint">${esc(j.frames_note)}</p>` : ''}
+    ${(j.takes || []).length ? `<p class="hint">Earlier takes: ${j.takes.map(tk => `<a href="${url(j.id, tk)}" target="_blank" rel="noopener">${esc(tk.replace(/^take-/, '').replace(/\.mp4$/, ''))}</a>`).join(' · ')}</p>` : ''}
+    ${j.error ? `<p class="err">${esc(j.error)}</p>` : ''}
+
+    <div class="tabs" role="tablist">
+      <button class="tab" type="button" role="tab" data-tab="prompt" aria-selected="true">Prompt</button>
+      <button class="tab" type="button" role="tab" data-tab="inputs" aria-selected="false"${resolvedInputs.length ? '' : ' disabled'}>Inputs${resolvedInputs.length ? ` (${resolvedInputs.length})` : ''}</button>
+    </div>
+
+    <div class="panel" data-panel="prompt">
+      <div class="slate-prompt-box" id="slatePromptBox">
+        <div class="slate-prompt-text ${longPrompt && !promptExpanded ? 'is-clamped' : ''}" id="slatePromptText">${esc(j.prompt)}</div>
+        <div class="slate-prompt-bar">
+          ${longPrompt ? `<button class="btn sm" type="button" id="promptExpand">${promptExpanded ? 'Collapse' : 'Expand'}</button>` : ''}
+          <button class="btn sm" type="button" id="copyClipPrompt">${icon('copy')}Copy</button>
+          ${j.status !== 'running' ? `<button class="btn sm" type="button" id="editPrompt">${icon('pen')}Edit prompt</button>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" data-panel="inputs" hidden>
+      ${resolvedInputs.length ? `<div class="inputs">${mediaHtml}</div>` : ''}
+    </div>`;
+
+  // Tab switching
+  s.querySelectorAll('.tab').forEach(tab => tab.onclick = () => {
+    s.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', String(x === tab)));
+    s.querySelectorAll('.panel').forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab });
+  });
+
+  // Expand / Collapse prompt
+  const expBtn = $('#promptExpand');
+  if (expBtn) expBtn.onclick = () => {
+    promptExpanded = !promptExpanded;
+    $('#slatePromptText').classList.toggle('is-clamped', !promptExpanded);
+    expBtn.textContent = promptExpanded ? 'Collapse' : 'Expand';
+  };
+
+  $('#copyClipPrompt').onclick = async () => {
+    try { await navigator.clipboard.writeText(j.prompt); msg('Clip prompt copied.') }
+    catch { msg('Copy blocked by browser.', true) }
+  };
+
+  // Inline rename (NO window.prompt)
+  $('#rename').onclick = () => {
+    slateEditing = 'rename'; editingJobId = j.id;
+    const wrap = $('#slateTitleWrap');
+    wrap.innerHTML = `<div class="slate-inline">
+      <input type="text" id="renameInput" value="${esc(j.name || j.title || '')}" placeholder="${esc(guessTitle(j.prompt))}" aria-label="Clip title" maxlength="80">
+      <button class="btn sm" type="button" id="renameSave">Save</button>
+      <button class="btn sm" type="button" id="renameCancel">Cancel</button>
+    </div>`;
+    const inp = $('#renameInput');
+    inp.focus(); inp.select();
+    const save = async () => {
+      try {
+        await api(`/api/jobs/${j.id}/rename`, { method: 'POST', body: fdForm('name', inp.value) });
+        slateEditing = null; lastSig = ''; await poll(); msg('Clip renamed.');
+      } catch (e) { msg(e.message, true) }
+    };
+    const cancel = () => { slateEditing = null; slateSig = ''; slate(j) };
+    $('#renameSave').onclick = save;
+    $('#renameCancel').onclick = cancel;
+    inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); save() } else if (e.key === 'Escape') cancel() };
+  };
+
+  // Inline folder assignment & New folder (NO window.prompt)
+  const foldSel = $('#foldSet'), newWrap = $('#foldNewWrap'), newInp = $('#foldNewInput');
+  foldSel.onchange = async e => {
+    const v = e.target.value;
+    if (v === '__new__') {
+      slateEditing = 'folder'; editingJobId = j.id;
+      newWrap.hidden = false;
+      newInp.value = '';
+      newInp.focus();
+      return;
+    }
+    try { await api(`/api/jobs/${j.id}/folder`, { method: 'POST', body: fdForm('folder', v) }); lastSig = ''; await poll() }
+    catch (err) { msg(err.message, true); foldSel.value = j.folder || '' }
+  };
+  const saveNewFolder = async () => {
+    const v = newInp.value.trim();
+    if (!v) { slateEditing = null; newWrap.hidden = true; foldSel.value = j.folder || ''; return }
+    try {
+      await api(`/api/jobs/${j.id}/folder`, { method: 'POST', body: fdForm('folder', v) });
+      slateEditing = null; lastSig = ''; await poll(); msg(`Moved to folder "${v}".`);
+    } catch (err) { msg(err.message, true) }
+  };
+  const cancelNewFolder = () => { slateEditing = null; newWrap.hidden = true; foldSel.value = j.folder || '' };
+  $('#foldNewSave').onclick = saveNewFolder;
+  $('#foldNewCancel').onclick = cancelNewFolder;
+  newInp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); saveNewFolder() } else if (e.key === 'Escape') cancelNewFolder() };
+
+  // Inline prompt edit (NO window.prompt)
+  const ep = $('#editPrompt');
+  if (ep) ep.onclick = () => {
+    slateEditing = 'prompt'; editingJobId = j.id;
+    const box = $('#slatePromptBox');
+    box.innerHTML = `<textarea class="slate-edit-area" id="editPromptArea" maxlength="20000" aria-label="Edit clip prompt">${esc(j.prompt)}</textarea>
+      <div class="slate-prompt-bar">
+        <button class="btn sm" type="button" id="editPromptSave" style="background:var(--onair-ink);border-color:var(--onair-ink);color:#fff">Save</button>
+        <button class="btn sm" type="button" id="editPromptCancel">Cancel</button>
+        <span class="hint">Ctrl+Enter to save · Esc to cancel</span>
+      </div>`;
+    const area = $('#editPromptArea');
+    area.focus();
+    const save = async () => {
+      const text = area.value.trim();
+      if (!text) return msg('Prompt cannot be empty.', true);
+      if (text === j.prompt) { slateEditing = null; slateSig = ''; slate(j); return }
+      try {
+        await api(`/api/jobs/${j.id}/prompt`, { method: 'POST', body: fdForm('prompt', text) });
+        slateEditing = null; lastSig = ''; await poll(); msg('Prompt updated — press Run again to render it.');
+      } catch (e) { msg(e.message, true) }
+    };
+    const cancel = () => { slateEditing = null; slateSig = ''; slate(j) };
+    $('#editPromptSave').onclick = save;
+    $('#editPromptCancel').onclick = cancel;
+    area.onkeydown = e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); save() }
+      else if (e.key === 'Escape') cancel();
+    };
+  };
+
+  // Run again
+  const again = $('#again');
+  if (again) again.onclick = async () => {
+    try {
+      const n = await api(`/api/jobs/${j.id}/requeue`, { method: 'POST' });
+      follow = true; sel = n.id; lastSig = ''; monSig = ''; await poll();
+      msg('Queued again in place — earlier take preserved below.');
+    } catch (e) { msg(e.message, true) }
+  };
+
+  // Load into New Job
+  $('#reuse').onclick = () => loadJobIntoCompose(j);
+
+  // Use output as ref
+  const useOutBtn = $('#useOutRef');
+  if (useOutBtn) useOutBtn.onclick = () => useOutputAsRef(j, useOutBtn);
+
+  // Delete with confirm dialog naming #num & title
+  const del = $('#del');
+  if (del) del.onclick = async () => {
+    const ok = await askConfirm({
+      title: `Delete #${j.num ?? '—'}?`,
+      body: `Delete #${j.num ?? '—'} — "${clipName(j)}" and all of its files?`,
+      note: 'This removes the output MP4 and uploaded inputs from disk.',
+      confirmLabel: 'Delete clip'
+    });
+    if (!ok) return;
+    try {
+      await api(`/api/jobs/${j.id}`, { method: 'DELETE' });
+      if (sel === j.id) sel = null;
+      selectedIds.delete(j.id);
+      lastSig = ''; monSig = ''; await poll();
+      msg(`Deleted #${j.num ?? '—'}.`);
+    } catch (e) { msg(e.message, true) }
+  };
+}
+
+function loadJobIntoCompose(j) {
+  if (composeCollapsed) toggleCompose(false);
+  $('#prompt').value = j.prompt || '';
+  $('#frames').value = legalFrameFor(j.frames);
+  LS.set('frames', $('#frames').value);
+  $('#seed').value = j.seed ?? '';
+  LS.set('seed', $('#seed').value);
+  $('#audio_mode').value = ['raw', 'peak'].includes(j.audio_mode) ? j.audio_mode : 'raw';
+  LS.set('audio', $('#audio_mode').value);
+  const asp = j.aspect || 'auto';
+  $('#aspect').value = $('#aspect').querySelector(`option[value="${asp}"]`) ? asp : 'auto';
+  LS.set('aspect', $('#aspect').value);
+  const pin = j.pin || '';
+  $('#pin').value = $('#pin').querySelector(`option[value="${pin}"]`) ? pin : '';
+  LS.set('pin', $('#pin').value);
+  if ($('#refShortEdge')) {
+    const edge = String(j.ref_short_edge || '2048');
+    $('#refShortEdge').value = $('#refShortEdge').querySelector(`option[value="${edge}"]`) ? edge : '2048';
+    LS.set('refShortEdge', $('#refShortEdge').value);
+  }
+  setSteps(j.steps);
+  refreshCost();
+
+  // Build Re-attach Checklist if the loaded job had inputs
+  const inputs = resolveJobInputTags(j);
+  if (inputs.length) {
+    reattachPlan = {
+      sourceLabel: `#${j.num ?? '—'} — ${clipName(j)}`,
+      items: inputs
+    };
+  } else {
+    reattachPlan = null;
+  }
+
+  $('#prompt').dispatchEvent(new Event('input'));
+  refreshRefUI();
+  $('#composePanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  $('#prompt').focus();
+  msg(inputs.length
+    ? `Loaded #${j.num ?? '—'} settings & prompt. Re-attach the ${inputs.length} listed input(s) to match.`
+    : `Loaded #${j.num ?? '—'} settings & prompt into New job.`);
+}
+
+function updateReattachChecklist() {
+  const box = $('#reattachBanner');
+  if (!box) return;
+  if (!reattachPlan || !reattachPlan.items.length) {
+    box.hidden = true; box.innerHTML = ''; return;
+  }
+  const activeTags = new Set(resolveRefTags(refFiles).flatMap(t => [t.tag, t.audioTag].filter(Boolean)));
+  const wf = workflowNow();
+  if (wf === 'fl2va') {
+    let pi = 0;
+    if ($('#compose [name=image]').files[0]) activeTags.add(`<Picture ${++pi}>`);
+    if ($('#compose [name=last_image]').files[0]) activeTags.add(`<Picture ${++pi}>`);
+  }
+  box.hidden = false;
+  box.innerHTML = `<div class="reattach-head">
+      <span class="lbl" style="color:var(--warm)">Re-attach checklist · from ${esc(reattachPlan.sourceLabel)}</span>
+      <button type="button" class="btn sm" id="dismissReattach">Dismiss</button>
+    </div>
+    <div class="reattach-list">
+      ${reattachPlan.items.map(it => {
+        const ok = activeTags.has(it.tag);
+        return `<div class="reattach-row ${ok ? 'is-done' : ''}">
+          ${icon(ok ? 'check' : 'warn')}
+          <span class="tc">${esc(it.tag)}${it.audioTag ? ' + ' + esc(it.audioTag) : ''}</span>
+          <span>${esc(it.name)}</span>
+          <span class="hint">(${esc(it.roleLabel)}${it.subjectGroup ? ', Subject ' + it.subjectGroup : ''})</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  $('#dismissReattach').onclick = () => { reattachPlan = null; updateReattachChecklist() };
+}
+
+async function useOutputAsRef(j, btn) {
+  if (!j?.output) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.textContent = 'Fetching…';
+  try {
+    const r = await fetch(url(j.id, j.output), {
+      credentials: 'same-origin',
+      headers: KEY ? { 'x-api-key': KEY } : {}
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const blob = await r.blob();
+    const fname = `h3-clip-${j.num ?? j.id.slice(0, 8)}.mp4`;
+    const file = new File([blob], fname, { type: blob.type || 'video/mp4', lastModified: Date.now() });
+
+    const hadKf = ['image', 'last_image'].some(n => $('#compose [name=' + n + ']').files[0]);
+    if (hadKf) clearKeyframes();
+    if (refFiles.filter(x => x.kind === 'video' && x.mode !== 'video_audio_only').length >= REF_LIMITS.video) {
+      return msg('Video reference limit (3) reached — remove one first.', true);
+    }
+    if (refFiles.length >= 12) {
+      return msg('Reference limit (12) reached — remove one first.', true);
+    }
+    const thumbUrl = URL.createObjectURL(file);
+    const refObj = {
+      id: ++refUid,
+      file,
+      kind: 'video',
+      mode: 'video',
+      keep_video_audio: j.media?.has_audio !== false,
+      role: 'video_continue',
+      subjectGroup: null,
+      start: 0,
+      end: null,
+      targetFps: null,
+      w: j.media?.width,
+      h: j.media?.height,
+      fps: j.media?.fps || 24,
+      dur: j.media?.duration || (j.frames ? +(j.frames / FPS).toFixed(2) : undefined),
+      hasAudio: j.media?.has_audio,
+      probing: false,
+      thumbUrl
+    };
+    refFiles.push(refObj);
+    probeLocalRef(refObj);
+    probeServerRef(refObj);
+    if (composeCollapsed) toggleCompose(false);
+    refreshRefUI();
+    $('#composePanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const addedTag = resolveRefTags(refFiles).find(t => t.r === refObj)?.tag || '<Video 1>';
+    msg(`Attached #${j.num ?? '—'} output as ${addedTag} (Video Continuation)${hadKf ? ' · cleared keyframes' : ''}.`);
+  } catch (e) {
+    msg(`Could not load output as reference: ${e.message}`, true);
+  } finally {
+    btn.disabled = false; btn.innerHTML = orig;
+  }
+}
+
+/* ---------------- clip bin & sidebar ---------------- */
+const clipName = j => j.name || j.title || guessTitle(j.prompt);
+
+function viewJobs() {
+  const q = binSearch.trim().toLowerCase();
+  const list = jobs.filter(j => {
+    if (foldFilter === '__none__' && j.folder) return false;
+    if (foldFilter && foldFilter !== '__none__' && j.folder !== foldFilter) return false;
+    if (wfFilter === 'active' && !['queued', 'running'].includes(j.status)) return false;
+    if (['t2va', 'fl2va', 'ref2va'].includes(wfFilter) && j.workflow !== wfFilter) return false;
+    if (wfFilter === 'errors' && !['error', 'cancelled'].includes(j.status)) return false;
+    if (q) {
+      const numStr = j.num != null ? `#${j.num} ${j.num}` : '';
+      const hay = `${numStr} ${j.name || ''} ${j.title || ''} ${j.prompt || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const by = {
+    newest: (a, b) => (b.created || 0) - (a.created || 0),
+    num: (a, b) => (b.num || 0) - (a.num || 0),
+    oldest: (a, b) => (a.created || 0) - (b.created || 0),
+    longest: (a, b) => (b.frames || 0) - (a.frames || 0),
+    shortest: (a, b) => (a.frames || 0) - (b.frames || 0),
+    steps: (a, b) => (b.steps || 0) - (a.steps || 0),
+    name: (a, b) => clipName(a).localeCompare(clipName(b))
+  }[sortBy] || ((a, b) => (b.created || 0) - (a.created || 0));
+
+  return list.slice().sort(by);
+}
+
+function wfFilterBar() {
+  const el = $('#wfFilters');
+  const activeCount = jobs.filter(j => ['queued', 'running'].includes(j.status)).length;
+  const errCount = jobs.filter(j => ['error', 'cancelled'].includes(j.status)).length;
+  const chips = [
+    ['all', 'All', jobs.length],
+    ['active', 'Active', activeCount],
+    ['t2va', 't2va', jobs.filter(j => j.workflow === 't2va').length],
+    ['fl2va', 'fl2va', jobs.filter(j => j.workflow === 'fl2va').length],
+    ['ref2va', 'ref2va', jobs.filter(j => j.workflow === 'ref2va').length],
+    ['errors', 'Errors', errCount]
+  ];
+  el.innerHTML = chips.map(([val, label, n]) =>
+    `<button type="button" class="fchip" data-wf="${val}" aria-pressed="${wfFilter === val}">${label}<small>${n}</small></button>`
+  ).join('');
+  el.querySelectorAll('[data-wf]').forEach(b => b.onclick = () => {
+    wfFilter = b.dataset.wf;
+    LS.set('wfFilter', wfFilter);
+    bin();
+  });
+}
+
+function folderBar() {
+  const el = $('#folders');
+  const names = [...new Set(jobs.map(j => j.folder).filter(Boolean))].sort();
+  const unfiled = jobs.filter(j => !j.folder).length;
+  const orphan = foldFilter && foldFilter !== '__none__' && !names.includes(foldFilter);
+  const chip = (val, label, n) => `<button type="button" class="fchip${val !== '' ? ' drop' : ''}" data-folder="${esc(val)}" aria-pressed="${foldFilter === val}">${esc(label)}<small>${n}</small></button>`;
+  const items = [chip('', 'All', jobs.length)];
+  if (unfiled) items.push(chip('__none__', 'Unfiled', unfiled));
+  names.forEach(n => items.push(chip(n, n, jobs.filter(j => j.folder === n).length)));
+  if (orphan) items.push(chip(foldFilter, `${foldFilter} (empty)`, 0));
+  el.innerHTML = items.join('');
+
+  el.querySelectorAll('[data-folder]').forEach(b => {
+    b.onclick = () => { foldFilter = b.dataset.folder; LS.set('folder', foldFilter); bin() };
+    if (b.dataset.folder === '') return;
+    b.ondragover = e => {
+      if (e.dataTransfer.types.includes('text/h3-job')) { e.preventDefault(); b.dataset.over = 'true' }
+    };
+    b.ondragleave = () => { delete b.dataset.over };
+    b.ondrop = async e => {
+      const id = e.dataTransfer.getData('text/h3-job');
+      if (!id) return;
+      e.preventDefault(); delete b.dataset.over;
+      const folder = b.dataset.folder === '__none__' ? '' : b.dataset.folder;
+      try { await api(`/api/jobs/${id}/folder`, { method: 'POST', body: fdForm('folder', folder) }); lastSig = ''; await poll() }
+      catch (err) { msg(err.message, true) }
+    };
+  });
+}
+
+function updateBatchBar() {
+  const bar = $('#batchBar');
+  bar.hidden = !selectMode;
+  if (!selectMode) return;
+  // Prune IDs that no longer exist
+  const validSet = new Set(jobs.map(j => j.id));
+  for (const id of [...selectedIds]) if (!validSet.has(id)) selectedIds.delete(id);
+  $('#batchCount').textContent = `${selectedIds.size} selected`;
+  $('#batchDel').disabled = selectedIds.size === 0;
+  const folders = [...new Set(jobs.map(j => j.folder).filter(Boolean))].sort();
+  const selEl = $('#batchFolder');
+  selEl.innerHTML = `<option value="">Move to folder…</option>
+    <option value="__none__">No folder</option>
+    ${folders.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join('')}
+    <option value="__new__">New folder…</option>`;
+}
+
+function resetAllBinFilters() {
+  foldFilter = ''; LS.set('folder', '');
+  wfFilter = 'all'; LS.set('wfFilter', 'all');
+  binSearch = ''; $('#binSearch').value = '';
+  $('#binSearchClear').hidden = true;
+  bin();
+}
+
+function bin() {
+  const el = $('#bin'), emptyEl = $('#binEmpty'), seen = new Set();
+  el.classList.toggle('is-list', binView === 'list');
+  const list = viewJobs();
+
+  list.forEach((j, n) => {
+    seen.add(j.id);
+    let t = el.querySelector(`[data-id="${j.id}"]`);
+    const live = liveFor(j.id);
+    const running = j.status === 'running' && !!live;
+    const lpct = running ? Math.round(((live.step || 0) / Math.max(1, live.steps || 1)) * 100) : 0;
+    const mediaSig = `${j.status}|${j.output || ''}|${j.poster || ''}`;
+    const isSelected = selectMode && selectedIds.has(j.id);
+    const sig = [
+      j.status, j.output || '', j.poster || '', j.num ?? '', j.frames || 124,
+      j.workflow, clipName(j), j.folder || '',
+      running ? `${lpct}|${live.stage || ''}` : '',
+      selectMode ? (isSelected ? 'sel1' : 'sel0') : '',
+      binView
+    ].join('|');
+
+    if (!t) {
+      t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'tile';
+      t.dataset.id = j.id;
+      t.draggable = true;
+      t.innerHTML = `<span class="th">
+          <span class="media-slot"></span>
+          <span class="lamp"></span>
+          <span class="n tc jnum"></span>
+          <span class="d tc"></span>
+          <span class="sel-box" hidden>${icon('check')}</span>
+          <span class="pb" hidden><i></i></span>
+        </span>
+        <span class="cap">
+          <span class="cap-text"></span>
+          <span class="chip"></span>
+        </span>`;
+      t.onclick = () => {
+        if (selectMode) {
+          if (selectedIds.has(j.id)) selectedIds.delete(j.id); else selectedIds.add(j.id);
+          bin();
+        } else {
+          sel = j.id; follow = false; monSig = ''; render();
+        }
+      };
+      t.ondragstart = e => {
+        e.dataTransfer.setData('text/h3-job', j.id);
+        e.dataTransfer.effectAllowed = 'copyMove';
+      };
+    }
+
+    // Only touch media DOM (<img src> or <video src>) when output/poster/status actually changes!
+    if (t.dataset.mediaSig !== mediaSig) {
+      t.dataset.mediaSig = mediaSig;
+      const slot = t.querySelector('.media-slot');
+      if (j.status === 'done') {
+        slot.innerHTML = j.poster
+          ? `<img src="${url(j.id, j.poster)}" alt="" loading="lazy">`
+          : `<video muted playsinline preload="metadata" src="${url(j.id, j.output)}#t=1" tabindex="-1"></video>`;
+      } else {
+        slot.innerHTML = `<span class="st"></span>`;
+      }
+    }
+
+    if (t.dataset.sig !== sig) {
+      t.dataset.sig = sig;
+      t.className = `tile ${j.status}${isSelected ? ' is-selected' : ''}`;
+      const lamp = { done: 'ready', running: 'onair', queued: 'off', error: '', cancelled: '' }[j.status] || '';
+      const paused = running && live.stage === 'paused';
+      t.querySelector('.lamp').className = `lamp ${paused ? 'warm' : lamp}`;
+
+      const st = t.querySelector('.media-slot .st');
+      if (st) st.textContent = running ? (paused ? 'Paused' : (STAGE[live.stage] || 'On air')) : j.status === 'queued' ? 'Queued' : j.status === 'cancelled' ? 'Cancelled' : 'Error';
+
+      const numEl = t.querySelector('.n');
+      numEl.hidden = !j.num;
+      numEl.textContent = j.num ? `#${j.num}` : '';
+
+      t.querySelector('.d').textContent = tc(j.frames || 124).slice(3);
+
+      const pb = t.querySelector('.pb');
+      pb.hidden = !running;
+      if (running) pb.firstElementChild.style.width = `${lpct}%`;
+
+      const selBox = t.querySelector('.sel-box');
+      selBox.hidden = !selectMode;
+
+      t.querySelector('.cap-text').textContent = clipName(j);
+      const chip = t.querySelector('.chip');
+      chip.className = `chip ${j.workflow}`;
+      chip.textContent = j.workflow;
+      t.setAttribute('aria-label', `${j.status}: ${clipName(j)}`);
+    }
+
+    t.setAttribute('aria-current', !selectMode && j.id === sel);
+    if (el.children[n] !== t) el.insertBefore(t, el.children[n] || null);
+  });
+
+  [...el.children].forEach(c => seen.has(c.dataset.id) || c.remove());
+
+  const done = jobs.filter(j => j.status === 'done').length;
+  $('#binCount').textContent = jobs.length ? `${done} done · ${jobs.length} total` : '0 clips';
+
+  // Informative empty states & orphaned folder reset
+  if (!list.length) {
+    emptyEl.hidden = false;
+    if (!jobs.length) {
+      emptyEl.innerHTML = `<strong>No generated clips yet.</strong>
+        <span class="hint">Write a prompt in New job and press Generate. Finished clips, running takes and errors appear here.</span>`;
+    } else {
+      const names = new Set(jobs.map(j => j.folder).filter(Boolean));
+      const isOrphan = foldFilter && foldFilter !== '__none__' && !names.has(foldFilter);
+      emptyEl.innerHTML = `<strong>${isOrphan ? `Folder "${esc(foldFilter)}" has no clips.` : 'No clips match the current filters.'}</strong>
+        <span class="hint">Try clearing your search or switching workflow / folder filters.</span>
+        <button type="button" class="btn sm" id="resetBinFilters">${isOrphan ? 'Reset orphaned folder filter' : 'Reset filters'}</button>`;
+      $('#resetBinFilters').onclick = resetAllBinFilters;
+    }
+  } else {
+    emptyEl.hidden = true;
+    emptyEl.innerHTML = '';
+  }
+
+  wfFilterBar();
+  folderBar();
+  updateBatchBar();
+}
+
+// Sidebar controls
+$('#binSearch').oninput = e => {
+  binSearch = e.target.value;
+  $('#binSearchClear').hidden = !binSearch;
+  bin();
+};
+$('#binSearchClear').onclick = () => {
+  binSearch = ''; $('#binSearch').value = ''; $('#binSearchClear').hidden = true; bin(); $('#binSearch').focus();
+};
+$('#sortBy').value = sortBy;
+$('#sortBy').onchange = e => { sortBy = e.target.value; LS.set('sort', sortBy); bin() };
+
+$('#viewMode').querySelectorAll('[data-view]').forEach(b => {
+  b.setAttribute('aria-pressed', String(b.dataset.view === binView));
+  b.onclick = () => {
+    binView = b.dataset.view;
+    LS.set('binView', binView);
+    $('#viewMode').querySelectorAll('[data-view]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    bin();
+  };
+});
+
+$('#selectMode').onclick = () => {
+  selectMode = !selectMode;
+  if (!selectMode) { selectedIds.clear(); $('#batchFoldNewWrap').hidden = true }
+  $('#selectMode').setAttribute('aria-pressed', String(selectMode));
+  bin();
+};
+$('#batchAll').onclick = () => { viewJobs().forEach(j => selectedIds.add(j.id)); bin() };
+$('#batchNone').onclick = () => { selectedIds.clear(); bin() };
+
+async function batchMoveFolder(targetFolder) {
+  const ids = [...selectedIds];
+  if (!ids.length) return;
+  try {
+    await Promise.all(ids.map(id => api(`/api/jobs/${id}/folder`, { method: 'POST', body: fdForm('folder', targetFolder) })));
+    lastSig = ''; await poll();
+    msg(`Moved ${ids.length} clip(s) ${targetFolder ? `to "${targetFolder}"` : 'out of folders'}.`);
+  } catch (err) { msg(err.message, true) }
+}
+$('#batchFolder').onchange = e => {
+  const v = e.target.value;
+  if (!v) return;
+  if (v === '__new__') {
+    $('#batchFoldNewWrap').hidden = false;
+    $('#batchFoldNew').value = '';
+    $('#batchFoldNew').focus();
+    return;
+  }
+  e.target.value = '';
+  batchMoveFolder(v === '__none__' ? '' : v);
+};
+$('#batchFoldApply').onclick = async () => {
+  const v = $('#batchFoldNew').value.trim();
+  $('#batchFoldNewWrap').hidden = true;
+  $('#batchFolder').value = '';
+  if (v) await batchMoveFolder(v);
+};
+$('#batchFoldCancel').onclick = () => { $('#batchFoldNewWrap').hidden = true; $('#batchFolder').value = '' };
+$('#batchFoldNew').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#batchFoldApply').click() } else if (e.key === 'Escape') $('#batchFoldCancel').click() };
+
+$('#batchDel').onclick = async () => {
+  const candidates = [...selectedIds].map(id => jobs.find(j => j.id === id)).filter(Boolean);
+  const deletable = candidates.filter(j => j.status !== 'running');
+  if (!deletable.length) return msg('Running jobs cannot be deleted — cancel them first.', true);
+  const previewNames = deletable.slice(0, 3).map(j => `#${j.num ?? '—'}`).join(', ') + (deletable.length > 3 ? ` +${deletable.length - 3} more` : '');
+  const ok = await askConfirm({
+    title: `Delete ${deletable.length} clip${deletable.length > 1 ? 's' : ''}?`,
+    body: `Delete ${previewNames} and all associated files?`,
+    note: deletable.length < candidates.length ? 'Running jobs in the selection will be skipped.' : 'This removes output MP4s and inputs from disk.',
+    confirmLabel: `Delete ${deletable.length}`
+  });
+  if (!ok) return;
+  try {
+    await Promise.all(deletable.map(j => api(`/api/jobs/${j.id}`, { method: 'DELETE' })));
+    deletable.forEach(j => { selectedIds.delete(j.id); if (sel === j.id) sel = null });
+    lastSig = ''; monSig = ''; await poll();
+    msg(`Deleted ${deletable.length} clip(s).`);
+  } catch (err) { msg(err.message, true) }
+};
+
+/* ---------------- render & polling ---------------- */
+function render() {
+  if (follow || !jobs.some(j => j.id === sel)) sel = jobs[0]?.id ?? null;
+  strip();
+  bin();
+  monitor();
+}
+
+async function poll() {
+  try {
+    health = await api('/api/health');
+    pollAt = Date.now();
+    if (!KEY) COOKIE = true;
+    try { lanes = await api('/api/lanes') } catch { lanes = [health] }
+    if (!engine) { try { engine = await api('/api/engine'); applyEngine() } catch {} }
+    const js = await api('/api/jobs'), sig = JSON.stringify(js);
+    if (sig !== lastSig) { lastSig = sig; jobs = js }
+  } catch (e) {
+    health = null; lanes = [];
+    if (e.status === 401) { KEY = ''; COOKIE = false; msg('Enter the API key to connect.', true) }
+  }
+  render();
+}
+
+async function setKey(k) {
+  KEY = k; lastSig = ''; monSig = ''; slateSig = ''; msg('');
+  try {
+    const fd = new FormData(); fd.append('key', k);
+    await api('/api/session', { method: 'POST', body: fd });
+    COOKIE = true;
+    LS.del('key');
+  } catch {
+    COOKIE = false;
+    LS.set('key', k);
+  }
+  poll();
+}
+$('#keyBtn').onclick = async () => {
+  KEY = ''; COOKIE = false; LS.del('key'); health = null; monSig = ''; slateSig = '';
+  try { await fetch('/api/session', { method: 'DELETE', credentials: 'same-origin' }) } catch {}
+  render(); $('#gateKey')?.focus();
+};
+
+/* ---------------- compose controls, reset, submit ---------------- */
+const msg = (t, bad) => { const m = $('#msg'); m.textContent = t; m.className = 'msg' + (bad ? ' bad' : '') };
+
+function toggleCompose(collapsed) {
+  composeCollapsed = collapsed;
+  LS.set('composeCollapsed', collapsed ? '1' : '0');
+  $('#composeBody').hidden = collapsed;
+  $('#composeToggle').textContent = collapsed ? 'Expand' : 'Collapse';
+  $('#composeToggle').setAttribute('aria-expanded', String(!collapsed));
+  updateComposeSummary();
+}
+function updateComposeSummary() {
+  const el = $('#composeSummary');
+  if (!el) return;
+  if (!composeCollapsed) { el.textContent = ''; return }
+  const fr = +$('#frames').value || 124;
+  const st = +$('#steps').value || 8;
+  el.textContent = `${refFiles.length ? refFiles.length + ' ref(s) · ' : ''}${(fr / FPS).toFixed(1)}s · ${st} steps`;
+}
+$('#composeToggle').onclick = () => toggleCompose(!composeCollapsed);
+
+function resetComposeAll() {
+  $('#prompt').value = '';
+  LS.del('draft');
+  $('#pcount').textContent = '0 / 20,000 characters';
+  clearKeyframes();
+  clearAllRefs();
+  reattachPlan = null;
+  pendingSwap = null;
+  $('#seed').value = ''; LS.del('seed');
+  $('#pin').value = ''; LS.set('pin', '');
+  $('#aspect').value = 'auto'; LS.set('aspect', 'auto');
+  $('#audio_mode').value = 'raw'; LS.set('audio', 'raw');
+  $('#refShortEdge').value = '2048'; LS.set('refShortEdge', '2048');
+  setSteps(8);
+  refreshRefUI();
+  msg('Composer reset.');
+}
+$('#resetCompose').onclick = resetComposeAll;
+
+$('#dice').onclick = () => { $('#seed').value = ''; LS.del('seed') };
+$('#seed').oninput = e => LS.set('seed', e.target.value);
+$('#audio_mode').onchange = e => LS.set('audio', e.target.value);
+$('#aspect').onchange = e => LS.set('aspect', e.target.value);
+$('#pin').onchange = e => LS.set('pin', e.target.value);
+$('#refShortEdge').onchange = e => LS.set('refShortEdge', e.target.value);
+
+$('#prompt').oninput = e => {
+  $('#pcount').textContent = `${e.target.value.length.toLocaleString()} / 20,000 characters`;
+  LS.set('draft', e.target.value);
+  updateTagBar();
+  runDiagnostics();
+  const sig = tagLinkSig(analyzePromptLinks());
+  if (sig !== _lastTagLinkSig) paintRefs();
+};
+
+function setSteps(n) {
+  const v = [8, 12, 25, 50].includes(+n) ? +n : 8;
+  $('#steps').value = v;
+  $$('#segSteps button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.steps === v)));
+  const words = { 8: 'draft quality, fastest', 12: 'good balance', 25: 'slow, more detail', 50: 'reference quality, slowest' };
+  $('#stepsHint').textContent = `${v} denoising steps · ${words[v]}`;
+  LS.set('steps', v);
+  updateComposeSummary();
+}
+$$('#segSteps button').forEach(b => b.onclick = () => setSteps(b.dataset.steps));
+$('#builder').onsubmit = e => e.preventDefault();
+
+function guard() {
+  const fd = new FormData($('#compose'));
+  const refs = refFiles.map(r => r.file);
+  const effKinds = refFiles.map(r => (r.kind === 'video' && r.mode === 'video_audio_only') ? 'audio' : (r.kind || kindOf(r.file)));
+  const keyframes = ['image', 'last_image'].some(n => fd.get(n)?.name);
+  if (!KEY && !COOKIE) return 'Connect with the API key first (top right).';
+  if (!($('#prompt').value || '').trim()) return 'Write a prompt first, or open the Builder.';
+  if (keyframes && refs.length) return 'Use a first/last frame or references, not both.';
+  const maxTotal = engine?.max_refs_total ?? 12;
+  if (refs.length > maxTotal) return `Too many references: ${maxTotal} in total.`;
+  if (effKinds.filter(x => x === 'image').length > REF_LIMITS.image || effKinds.filter(x => x === 'video').length > REF_LIMITS.video || effKinds.filter(x => x === 'audio').length > REF_LIMITS.audio)
+    return `Up to ${REF_LIMITS.image} images, ${REF_LIMITS.video} videos and ${REF_LIMITS.audio} audio references (including extracted audio tracks).`;
+  if (refs.length && effKinds.every(x => x === 'audio')) return 'Audio references need an image or video reference too.';
+  return null;
+}
+
+$('#compose').onsubmit = async e => {
+  e.preventDefault();
+  const bad = guard(); if (bad) return msg(bad, true);
+  const fd = new FormData(e.target);
+
+  // Ensure exact ordered references & server.py v2.3 ref_meta schema
+  fd.delete('references');
+  fd.delete('roles');
+  const tagged = resolveRefTags(refFiles);
+  const refMeta = tagged.map(t => {
+    const r = t.r;
+    return {
+      index: t.index,
+      name: r.file.name,
+      kind: t.kind,
+      mode: t.mode,
+      role: t.legacyRole,
+      ui_role: r.role,
+      subject_group: t.subjectGroup,
+      tag: t.tag,
+      audio_tag: t.audioTag,
+      keep_video_audio: t.mode === 'video' ? (r.keep_video_audio !== false && r.hasAudio !== false) : (t.mode === 'video_audio_only'),
+      start_sec: r.start || 0,
+      end_sec: r.end ?? null,
+      fps_override: t.kind === 'video' && t.mode === 'video' ? (r.targetFps ?? null) : null,
+      width: r.w ?? null,
+      height: r.h ?? null,
+      duration: r.dur ?? null,
+      has_audio: r.hasAudio ?? null
+    };
+  });
+
+  refFiles.forEach((r, idx) => {
+    fd.append('references', r.file);
+    fd.append('roles', tagged[idx].legacyRole);
+  });
+  fd.set('ref_meta', JSON.stringify(refMeta));
+  fd.set('ref_short_edge', $('#refShortEdge').value || '2048');
+  fd.set('aspect', $('#aspect').value || 'auto');
+
+  // Legacy v2.2 video flags derived from first video reference
+  const firstVid = refFiles.find(r => r.kind === 'video');
+  const anyKeepAudio = refFiles.some(r => r.kind === 'video' && (r.mode === 'video_audio_only' || (r.keep_video_audio !== false && r.hasAudio !== false)));
+  fd.set('keep_video_audio', firstVid ? (anyKeepAudio ? 'true' : 'false') : 'true');
+  fd.set('video_start', String(firstVid?.start || 0));
+
+  const keptFrames = $('#frames').value, keptSteps = $('#steps').value, keptSeed = $('#seed').value;
+  const keptAudio = $('#audio_mode').value, keptPin = $('#pin').value, keptAspect = $('#aspect').value;
+  const keptEdge = $('#refShortEdge').value;
+
+  $('#go').disabled = true; msg('Uploading…');
+  try {
+    const j = await api('/api/jobs', { method: 'POST', body: fd });
+    msg(`Queued${j.eta_s ? ' · about ' + short(j.eta_s) : ''}.`);
+    follow = true; sel = j.id; lastSig = ''; monSig = ''; slateSig = '';
+    e.target.reset();
+    clearKeyframes();
+    clearAllRefs();
+    reattachPlan = null;
+    $('#frames').value = keptFrames; setSteps(keptSteps); $('#seed').value = keptSeed; refreshCost();
+    $('#audio_mode').value = keptAudio; $('#pin').value = keptPin; $('#aspect').value = keptAspect;
+    $('#refShortEdge').value = keptEdge;
+    LS.del('draft');
+    $('#pcount').textContent = '0 / 20,000 characters';
+    refreshRefUI();
+    await poll();
+    if (matchMedia('(max-width:960px)').matches) $('#monStage').scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    msg(err.status === 401 ? 'The API key was rejected.' : 'Not queued: ' + err.message, true);
+  } finally {
+    $('#go').disabled = false; strip();
+  }
+};
+
+// Mobile sticky 3-tab jump bar active highlight
+$('#mobNav').querySelectorAll('a').forEach(a => a.onclick = () => {
+  $('#mobNav').querySelectorAll('a').forEach(x => x.setAttribute('aria-current', String(x === a)));
+});
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if ($('#dlg').open || $('#confirmDlg').open || $('#go').disabled) return;
+    if (e.target && e.target.closest('#slate')) return;
+    e.preventDefault();
+    $('#compose').requestSubmit();
+  }
+  if (e.key === 'Escape') {
+    if ($('#confirmDlg').open) closeConfirm(false);
+    else if ($('#dlg').open) $('#dlg').close();
+  }
+});
+
+/* boot */
+boot();
+loadDraft();
+updateStripHeight();
+setSteps(LS.get('steps', 8));
+if (composeCollapsed) toggleCompose(true);
+applyOsdVisibility();
+
+const draft = LS.get('draft', '');
+if (draft) { $('#prompt').value = draft; $('#pcount').textContent = `${draft.length.toLocaleString()} / 20,000 characters` }
+const storedSeed = LS.get('seed', '');
+if (storedSeed) $('#seed').value = storedSeed;
+const storedAudio = LS.get('audio', 'raw');
+if (['raw', 'peak'].includes(storedAudio)) $('#audio_mode').value = storedAudio;
+const storedAspect = LS.get('aspect', 'auto');
+if ($('#aspect').querySelector(`option[value="${storedAspect}"]`)) $('#aspect').value = storedAspect;
+const storedPin = LS.get('pin', '');
+if ($('#pin').querySelector(`option[value="${storedPin}"]`)) $('#pin').value = storedPin;
+const storedEdge = LS.get('refShortEdge', '2048');
+if ($('#refShortEdge').querySelector(`option[value="${storedEdge}"]`)) $('#refShortEdge').value = storedEdge;
+
+refreshRefUI();
+if (KEY) setKey(KEY); else poll();
+setInterval(poll, 3000);
+setInterval(tickLive, 1000);
+</script>
+</body>
+</html>
