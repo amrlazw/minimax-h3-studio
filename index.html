@@ -2444,7 +2444,7 @@ const STYLE_NOTES = {
 };
 
 function findSampleClipFor(styleVal, tmplKey) {
-  const done = (lastJobs || []).filter(j => j.status === 'done' && j.output);
+  const done = (jobs || []).filter(j => j.status === 'done' && j.output);
   if (!done.length) return null;
   let pinned = {};
   try { pinned = JSON.parse(LS.get('styleSamples', '{}')) } catch {}
@@ -2483,10 +2483,37 @@ function showStylePreview(forceOpen = true) {
       </div>`;
   } else {
     const note = STYLE_NOTES[styleVal] || 'Structured H3 look and lighting direction.';
+    const tpl = tmplKey && COMMERCIAL_PRESETS[tmplKey];
+    const asp = tpl?.aspect || $('#aspect')?.value || '16:9';
+    const ratioMap = { '16:9': '16/9', '9:16': '9/16', '21:9': '21/9', '1:1': '1/1', '4:3': '4/3', '3:4': '3/4' };
+    const cssRatio = ratioMap[asp] || '16/9';
+    const paletteMap = {
+      'Live-action, cinematic': ['#131822', '#d49a5a', '#355c7d'],
+      'Live-action, documentary': ['#1f2421', '#9db4ab', '#dce1de'],
+      'Live-action, handheld, natural light': ['#26231e', '#d6b78b', '#7b8c7a'],
+      '3D CG, cinematic': ['#0c1220', '#38bdf8', '#f59e0b'],
+      '2D-animated, cel-shaded': ['#1b102b', '#ff477e', '#00f5d4'],
+      'Claymation': ['#2d241e', '#e07a5f', '#f2cc8f'],
+      'Watercolor animation': ['#f4efe6', '#6b9080', '#e09f7d'],
+      'Vintage film, 16mm grain': ['#211a14', '#c9935b', '#7a634b']
+    };
+    const pal = paletteMap[styleVal] || ['#141820', '#7c98b3', '#d4a373'];
     body.innerHTML = `<div class="style-pop-empty">
-      <div style="font-size:13px;color:var(--i90)">${esc(note)}</div>
-      <div class="hint">No rendered clip for "${esc(styleVal)}" in your library yet.</div>
-      <button class="btn sm" type="button" id="bRenderSample">Render 5s Draft Sample (${minFrameCount()}f · 8 steps)</button>
+      <div style="width:100%;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="width:180px;max-width:100%;aspect-ratio:${cssRatio};max-height:130px;background:linear-gradient(135deg,${pal[0]} 0%,${pal[2]} 100%);border:1px solid var(--i40);position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:8px;overflow:hidden">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="tc" style="font-size:10px;background:rgba(0,0,0,.55);color:#fff;padding:1px 5px">${esc(asp)}</span>
+            <span class="tc" style="font-size:10px;color:${pal[1]}">● ${esc(styleVal.split(',')[0])}</span>
+          </div>
+          ${tpl?.text ? `<div style="font:700 11px/1.2 var(--label);letter-spacing:.08em;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.8);text-align:center">${esc(tpl.text)}</div>` : `<div style="font:600 10.5px/1.2 var(--label);color:rgba(255,255,255,.8);text-align:center">${esc(B.camType || 'cinematic framing')}</div>`}
+          <div style="display:flex;gap:4px">${pal.map(c => `<i style="display:block;width:14px;height:6px;background:${c};border:1px solid rgba(255,255,255,.25)"></i>`).join('')}</div>
+        </div>
+        <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:13px;color:var(--i90)">${esc(note)}</div>
+          <div class="hint">No rendered video for "${esc(tplLabel || styleVal)}" in your library yet — render a quick 5s draft to preview real output here.</div>
+          <div><button class="btn sm" type="button" id="bRenderSample">Render 5s Draft Sample (${minFrameCount()}f · 8 steps)</button></div>
+        </div>
+      </div>
     </div>`;
   }
   const rs = $('#bRenderSample');
