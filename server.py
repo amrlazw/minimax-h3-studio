@@ -1322,11 +1322,23 @@ def upscale_job(jid: str):
 
 
 @app.get("/files/{jid}/{name}")
-def files(jid: str, name: str):
+def files(jid: str, name: str, dl: int = 0):
     p = JOBS / jid / name
     if not re.fullmatch(r"[0-9a-f]{32}", jid) or not re.fullmatch(r"[\w.-]+", name) \
             or name.startswith("job.") or not p.is_file():
         raise HTTPException(404)
+    if dl:
+        try:
+            j = read(jid)
+            raw_title = (j.get("name") or j.get("title") or "").strip()
+            safe = re.sub(r'[\\/:*?"<>|]+', " ", raw_title)
+            safe = re.sub(r"\s+", " ", safe).strip()[:80]
+            if safe:
+                ext = p.suffix or ".mp4"
+                suffix = " (2K)" if name == j.get("upscaled") else ""
+                return FileResponse(p, filename=f"{safe}{suffix}{ext}")
+        except Exception:
+            pass
     return FileResponse(p)
 
 

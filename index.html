@@ -3287,6 +3287,11 @@ function slate(j) {
         : `<figure><audio controls preload="none" src="${u}"></audio>${cap}</figure>`;
   }).join('');
 
+  const dlSlug = (clipName(j) || `h3-${j.id.slice(0, 8)}`).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || `h3-${j.id.slice(0, 8)}`;
+  const dlHref = (name, suffix = '') => {
+    const base = url(j.id, name);
+    return base + (base.includes('?') ? '&' : '?') + 'dl=1';
+  };
   s.innerHTML = `
     <div class="slate-head">
       <div class="slate-title-wrap" id="slateTitleWrap">
@@ -3308,8 +3313,8 @@ function slate(j) {
     </div>
 
     <div class="acts">
-      ${j.status === 'done' ? `<a class="btn sm" href="${url(j.id, j.output)}" download="h3-${j.id.slice(0, 8)}.mp4">${icon('dl')}Download</a>` : ''}
-      ${j.status === 'done' && j.upscaled ? `<a class="btn sm" href="${url(j.id, j.upscaled)}" download="h3-${j.id.slice(0, 8)}-2k.mp4">${icon('dl')}2K MP4${j.upscaled_size ? ` (${esc(j.upscaled_size)})` : ''}</a>` : ''}
+      ${j.status === 'done' ? `<a class="btn sm" href="${dlHref(j.output)}" download="${esc(dlSlug)}.mp4">${icon('dl')}Download</a>` : ''}
+      ${j.status === 'done' && j.upscaled ? `<a class="btn sm" href="${dlHref(j.upscaled)}" download="${esc(dlSlug)} (2K).mp4">${icon('dl')}2K MP4${j.upscaled_size ? ` (${esc(j.upscaled_size)})` : ''}</a>` : ''}
       ${j.status === 'done' || j.status === 'error' || j.status === 'cancelled' ? `<button class="btn sm" type="button" id="again">${icon('reuse')}Run again</button>` : ''}
       <button class="btn sm" type="button" id="reuse">Load into New Job</button>
       ${j.status === 'done' && j.output ? `<button class="btn sm" type="button" id="useOutRef">${icon('link')}Use output as ref</button>` : ''}
