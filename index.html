@@ -662,21 +662,36 @@ footer a{color:var(--i80)}
       <button class="btn icon" type="button" id="bClose" aria-label="Close builder"><svg class="ic"><use href="#i-x"/></svg></button>
     </div>
     <div class="body">
-      <div class="field span2"><label class="lbl" for="bTemplate">Commercial use-case starter <span class="hint">from MiniMax-H3 guide (3.1) — shows expected demo video</span></label>
+      <div class="field span2"><label class="lbl" for="bTemplate">Use-case starter <span class="hint">from MiniMax-H3 guide (3.1 – 3.3.4.4) — shows expected demo video</span></label>
         <select id="bTemplate">
           <option value="">Custom / blank</option>
-          <option value="ecom_ad">3.1.6 · Product &amp; E-Commerce (Futuristic Eyewear, 9:16)</option>
-          <option value="food_ad">3.1.6 · Food &amp; Beverage Commercial (16:9)</option>
-          <option value="brand_spot">3.1.1 · Brand Film (Vintage Binocular, 16:9)</option>
-          <option value="space_teaser">3.1.1 · Epic Space Opera Teaser (16:9)</option>
-          <option value="motion_gfx">3.1.3 · Motion Graphics &amp; Tech Brand Film (16:9)</option>
-          <option value="ar_world">3.1.4 · AR Creative World Editing (16:9)</option>
-          <option value="micro_drama">3.1.5 · AI-Native Short Drama (Vertical 9:16)</option>
-          <option value="saas_ui">3.1.7 · Product Landing Page UI/UX Demo (16:9)</option>
-          <option value="robotics">3.1.8 · Hardware &amp; Robotic Arm Demo (16:9)</option>
-          <option value="claymation">3.1.9 · Claymation Action (16:9)</option>
-          <option value="anime_action">3.1.9 · Anime-Inspired 2D Cel Animation (16:9)</option>
-          <option value="music_video">3.1.2 · Cyber-Grunge Rap Music Video (16:9)</option>
+          <optgroup label="3.1 · Commercial-Grade Use Cases">
+            <option value="ecom_ad">3.1.6 · Product &amp; E-Commerce (Futuristic Eyewear, 9:16)</option>
+            <option value="food_ad">3.1.6 · Food &amp; Beverage Commercial (16:9)</option>
+            <option value="brand_spot">3.1.1 · Brand Film (Vintage Binocular, 16:9)</option>
+            <option value="space_teaser">3.1.1 · Epic Space Opera Teaser (16:9)</option>
+            <option value="motion_gfx">3.1.3 · Motion Graphics &amp; Tech Brand Film (16:9)</option>
+            <option value="ar_world">3.1.4 · AR Creative World Editing (16:9)</option>
+            <option value="micro_drama">3.1.5 · AI-Native Short Drama (Vertical 9:16)</option>
+            <option value="saas_ui">3.1.7 · Product Landing Page UI/UX Demo (16:9)</option>
+            <option value="robotics">3.1.8 · Hardware &amp; Robotic Arm Demo (16:9)</option>
+            <option value="claymation">3.1.9 · Claymation Action (16:9)</option>
+            <option value="anime_action">3.1.9 · Anime-Inspired 2D Cel Animation (16:9)</option>
+            <option value="music_video">3.1.2 · Cyber-Grunge Rap Music Video (16:9)</option>
+          </optgroup>
+          <optgroup label="3.2 · Native Multimodal Reference">
+            <option value="multi_remix">3.2.1 · Multi-Asset Cinematic Remix (&lt;Picture&gt; + &lt;Video&gt;)</option>
+            <option value="dance_xfer">3.2.2 · Street Dance Motion Transfer (&lt;Video&gt; + &lt;Picture&gt;)</option>
+            <option value="voice_clone">3.2.3 · Voice Clone Dialogue Transfer (&lt;Audio 1&gt;)</option>
+          </optgroup>
+          <optgroup label="3.3 · Precise Multimodal Editing">
+            <option value="obj_replace">3.3.1 · Character &amp; Object Replacement (&lt;Video 1&gt;)</option>
+            <option value="relight_night">3.3.2 · Day-to-Night Relighting (&lt;Video 1&gt;)</option>
+            <option value="handdrawn_fx">3.3.2 · Hand-Drawn VFX Over Live Action (16:9)</option>
+            <option value="dlg_replace">3.3.3 · Dialogue &amp; Performance Replacement (&lt;Video&gt; + &lt;Audio&gt;)</option>
+            <option value="costume_swap">3.3.4 · Precision Costume Swap (&lt;Picture 1&gt;)</option>
+            <option value="romance_vfx">3.3.4 · Hand-Drawn Romance VFX (&lt;Picture&gt; + &lt;Video&gt;)</option>
+          </optgroup>
         </select>
         <div class="hint" id="bTemplateHint"></div></div>
 
@@ -2510,6 +2525,104 @@ const COMMERCIAL_PRESETS = {
     hint: 'Official 3.1.2.4 Cyber-Grunge Rap Music Video style.',
     demoTitle: '3.1.2.4 Cyber-Grunge Rap Music Video',
     demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/68c6fb8f-0d0d-4e79-921b-e95b8f5dd78b/68c6fb8f-0d0d-4e79-921b-e95b8f5dd78b.mp4?table=block&id=19cd99c3-d331-82e7-a5de-0140f55e85c8&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=nwtc_exM1aUnLxjZX1b-e6otntM7a10CRFIbQeGc7PY'
+  },
+  multi_remix: {
+    aspect: '16:9', intent: 'recreate', style: 'Live-action, cinematic',
+    camType: '', camAmp: '', camSpd: '',
+    scene: 'Multi-asset cinematic remix combining attached visual references while matching the shot rhythm, transition language, and music of <Video 1>',
+    shots: [{ text: 'Follow <Video 1> pacing and cuts while integrating all attached <Picture N> assets seamlessly into a unified scene.' }],
+    text: '', sound: 'Synchronized impacts and spatial ambience matching <Video 1>.', music: 'Match the energy and tempo of <Video 1>.',
+    hint: 'Tip: Attach 2–6 images (<Picture 1..6>) + 1 rhythm reference video (<Video 1>).',
+    demoTitle: '3.2.1.1 Multi-Asset Cinematic Remix',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/1e2cf5e6-f2ea-4a69-a715-fcc9f8fd715d/%E5%A4%9A%E6%A8%A1%E6%80%81%E5%8F%82%E8%80%83%E6%96%B01.mp4?table=block&id=3b9d99c3-d331-8032-a96b-f8392342d14c&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=hZvXj9gWcqBf08N5tBsvWi_bZpT_o9TpFLVHu_cjd-U'
+  },
+  dance_xfer: {
+    aspect: '9:16', intent: 'recreate', style: 'Live-action, cinematic',
+    camType: '', camAmp: '', camSpd: '',
+    scene: 'Urban street-dance stage matching the exact choreography and camera framing of <Video 1>, performed by the character(s) in <Picture 1>',
+    shots: [{ text: 'The character from <Picture 1> performs the full street-dance routine from <Video 1> with sharp, grounded footwork and natural fabric motion.' }],
+    text: '', sound: 'Crisp sneaker squeaks on concrete, cloth rustle.', music: 'Punchy street-dance hip-hop beat synced to the choreography.',
+    hint: 'Tip: Attach 1–2 character photos (<Picture 1..2>) + 1 dance motion video (<Video 1>).',
+    demoTitle: '3.2.2.2 Street Dance Motion Transfer',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/f536a173-b98f-45d5-8c72-96dc0c7959ab/f536a173-b98f-45d5-8c72-96dc0c7959ab.mp4?table=block&id=2eed99c3-d331-83c8-8e0a-813f5933b563&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=XvFFmo_rsNgprpz1vtzu6BUlUVXrKS3-EywRwp_HMgM'
+  },
+  voice_clone: {
+    aspect: '16:9', intent: 'person', style: 'Live-action, cinematic',
+    camType: 'pushes in', camAmp: 'with small amplitude', camSpd: 'at slow speed',
+    scene: 'Warm natural-light medium close-up of the speaker outdoors in gentle breeze, matching the vocal timbre of <Audio 1>',
+    shots: [{ text: 'The character looks calmly toward the lens and delivers the spoken line with natural lip-sync and facial expression.' }],
+    dialogues: [{ speaker: 'the character, matching the voice timbre of <Audio 1>, on screen', lang: 'English', line: 'Follow the wind, live free. Leave worries behind, enjoy the moment.' }],
+    text: '', sound: 'Soft outdoor breeze, natural room presence.', music: 'Gentle acoustic ambient underscore.',
+    hint: 'Tip: Attach an <Audio 1> voice sample (+ optional <Picture 1> character photo) for 3.2.3 Voice Cloning.',
+    demoTitle: '3.2.3.1 Voice Clone Dialogue Transfer',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/d13c25f5-c92a-4486-a300-87e1a4b965dd/d13c25f5-c92a-4486-a300-87e1a4b965dd.mp4?table=block&id=dced99c3-d331-82d9-bfc4-0104952c5c23&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=bTkbwvVYteXM0hrbaibkN5QjCpkgVzwVUnyDES-y5t0'
+  },
+  obj_replace: {
+    aspect: 'auto', intent: 'recreate', style: 'Live-action, cinematic',
+    camType: '', camAmp: '', camSpd: '',
+    scene: 'Preserve the exact background, lighting, and camera motion of <Video 1>, replacing the original subject cleanly with a golden retriever dog',
+    shots: [{ text: 'Replace the cat in <Video 1> with a playful dog performing the same path and timing while keeping the surroundings untouched.' }],
+    text: '', sound: 'Natural paw steps and ambient room tone matching <Video 1>.', music: 'N/A',
+    hint: 'Tip: Attach 1 source video (<Video 1>) and specify what to replace/preserve.',
+    demoTitle: '3.3.1.1 Cat-to-Dog Replacement',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/9cea1b04-c11a-49cd-ae36-6d95cb3c7ae3/9cea1b04-c11a-49cd-ae36-6d95cb3c7ae3.mp4?table=block&id=9a4d99c3-d331-8299-8677-01ddbc6f9745&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=ag0P5Va87AL1DNULwyOgQpC9SuDQedROBFv_9YBX7Xw'
+  },
+  relight_night: {
+    aspect: 'auto', intent: 'recreate', style: 'Live-action, cinematic',
+    camType: '', camAmp: '', camSpd: '',
+    scene: 'Preserve the exact geometry, camera movement, and subjects of <Video 1>, transforming the lighting from bright daytime into moody moonlit night with practical streetlights',
+    shots: [{ text: 'Change the lighting in <Video 1> from daytime to night with cool moonlight shadows and warm artificial practical lights.' }],
+    text: '', sound: 'Quiet night crickets and distant ambience.', music: 'Atmospheric nocturnal synth pad.',
+    hint: 'Tip: Attach 1 daytime video (<Video 1>) to relight it to night while preserving the scene.',
+    demoTitle: '3.3.2.2 Day-to-Night Relighting',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/cee3fe53-633c-423b-ace0-8d2395361d6f/cee3fe53-633c-423b-ace0-8d2395361d6f.mp4?table=block&id=cdad99c3-d331-8341-b7b7-81795e0b1787&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=PXKbg7YkymbgbCSTrINNaotw6LwAo84TdThyIsPfJW8'
+  },
+  handdrawn_fx: {
+    aspect: '16:9', intent: 'scene', style: 'Live-action, handheld, natural light',
+    camType: 'shakes slightly, handheld', camAmp: 'with small amplitude', camSpd: 'at normal speed',
+    scene: 'Live-action footage inside an empty old tram at dusk filmed one-handed on a phone, blended with flat apricot-orange glowing crayon-and-chalk hand-drawn doodles',
+    shots: [
+      { text: 'A fingertip traces an arc on the misted window that becomes a glowing apricot hand-drawn line, folding into a paper swallow and fluttering past hanging straps.' },
+      { text: 'The camera reacts half a beat late as the glowing line morphs continuously across seat seams and dissolves into a sunset cloudscape.' }
+    ],
+    text: '', sound: 'Low tram rail friction, hanging strap clatter, paper rustle, soft chalk friction on glass.', music: 'N/A',
+    hint: 'Official 3.3.2.2 Hand-Drawn VFX over live-action footage.',
+    demoTitle: '3.3.2.2 Hand-Drawn Effects',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/acd7b69c-afdd-42c7-a77f-f92e5268fcef/%E6%B5%B7%E8%9E%BA_%E8%A7%86%E9%A2%91_15%E7%A7%92%EF%BC%8C16_9%E6%A8%AA%E7%89%88_539178623442698249.mp4?table=block&id=3b9d99c3-d331-8058-84a2-dfc8da251a23&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=24vJIkh_cqhTa2zhQUExIlQEUQxO_LtH770U4RV9nJ8'
+  },
+  dlg_replace: {
+    aspect: 'auto', intent: 'recreate', style: 'Live-action, cinematic',
+    camType: '', camAmp: '', camSpd: '',
+    scene: 'In <Video 1>, preserve the setting and camera framing while replacing the speaker’s spoken line and subtly adjusting facial performance to match <Audio 1>',
+    shots: [{ text: 'Replace the original dialogue in <Video 1> with the new line from <Audio 1>, matching lip-sync and emotional delivery.' }],
+    dialogues: [{ speaker: 'the speaker from <Video 1>, matching <Audio 1>, on screen', lang: 'English', line: 'Please don’t go. This time, let’s not let each other go.' }],
+    text: '', sound: 'Natural room presence matching <Video 1>.', music: 'Soft emotional underscore.',
+    hint: 'Tip: Attach 1 source video (<Video 1>) + 1 replacement voice clip (<Audio 1>).',
+    demoTitle: '3.3.3.1 Dialogue & Performance Replacement',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/8f52cfbf-bf9b-458a-8c9c-800fbdc0561b/8f52cfbf-bf9b-458a-8c9c-800fbdc0561b.mp4?table=block&id=a30d99c3-d331-82e8-b82a-013e438d34ad&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=y_Or3G0R5XN5m52SDC1A0JCl1f-PE4TWvP_dGozgWs4'
+  },
+  costume_swap: {
+    aspect: '16:9', intent: 'scene', style: 'Live-action, cinematic',
+    camType: 'holds a static shot', camAmp: '', camSpd: '',
+    scene: 'Two magicians standing onstage facing the audience in front of a deep red velvet curtain',
+    shots: [
+      { text: 'They wave their wands simultaneously and smoke rises; when it clears, their suit colors have swapped (left wears white, right wears black) while glove colors remain unchanged.' },
+      { text: 'They bow as the red curtain closes behind them and gradually shifts from deep red to dark blue.' }
+    ],
+    text: '', sound: 'Crisp wand whoosh, soft stage smoke puff, audience gasp and applause.', music: 'Playful theatrical magic-show strings.',
+    hint: 'Official 3.3.4.3 Precision Costume Swap instruction adherence.',
+    demoTitle: '3.3.4.3 Precision Costume Swap',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/c0ca4977-f844-4a68-aa8b-c792c18e5024/c0ca4977-f844-4a68-aa8b-c792c18e5024.mp4?table=block&id=fe1d99c3-d331-8259-bc4d-0101ee6c6065&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=1Mx49mRilKa_oFaHxf5fmXCJLGQs8-pEaUzNZNuNydY'
+  },
+  romance_vfx: {
+    aspect: 'auto', intent: 'recreate', style: 'Live-action, cinematic',
+    camType: '', camAmp: '', camSpd: '',
+    scene: 'Preserve <Video 1> while adding orange-yellow hand-drawn spark marks inspired by <Picture 1> around the two people',
+    shots: [{ text: 'As they move closer, the hand-drawn marks multiply and build into bright radiance, introducing warm pink brushstrokes at the climax.' }],
+    text: '', sound: 'Soft romantic ambience, delicate sparkle shimmer.', music: 'Warm dreamy acoustic guitar and strings.',
+    hint: 'Tip: Attach 1 style-mark image (<Picture 1>) + 1 source video (<Video 1>).',
+    demoTitle: '3.3.4.4 Hand-Drawn Romance VFX',
+    demoUrl: 'https://file.notion.so/f/f/70ad99c3-d331-8167-9b32-000326c24b16/74ad3db1-9ed4-4c0d-b00d-3fa2d11a699a/74ad3db1-9ed4-4c0d-b00d-3fa2d11a699a.mp4?table=block&id=768d99c3-d331-828e-afe0-811d4a98269e&spaceId=70ad99c3-d331-8167-9b32-000326c24b16&expirationTimestamp=1795701600000&signature=aw862yEqUy_L2FRCSjlf13lQW8egz1gagGLgAPELFPg'
   }
 };
 
