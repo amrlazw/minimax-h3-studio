@@ -3,6 +3,7 @@ __pycache__/
 *.bak
 .env
 .env.*
+!.env.example
 .playwright-cli/
 .impeccable/
 .DS_Store
