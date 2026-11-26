@@ -223,9 +223,8 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 
 /* render parameters strip */
 .params-strip{border-top:1px solid var(--i30);padding-top:14px;display:flex;flex-direction:column;gap:12px}
-.seg{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--i40)}
-.seg button{background:var(--i0);border:0;border-right:1px solid var(--i40);padding:8px 6px;font:600 12px/1.2 var(--label);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--i70)}
-.seg button:last-child{border-right:0}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:1px;background:var(--i40);border:1px solid var(--i40)}
+.seg button{background:var(--i0);border:0;padding:8px 6px;font:600 12px/1.2 var(--label);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--i70)}
 .seg button[aria-pressed=true]{background:var(--i100);color:var(--i0)}
 .seg button:hover{color:var(--i100)}.seg button[aria-pressed=true]:hover{color:var(--i0)}
 .seg small{display:block;font:500 10.5px var(--tc);letter-spacing:0;opacity:.85;margin-top:3px}
@@ -355,10 +354,7 @@ footer a{color:var(--i80)}
   .program{padding:14px var(--g) 24px}
   .mon-frame.is-portrait{width:100%;border-inline:0}
   .compose-grid,.row2{grid-template-columns:1fr}
-  .seg{grid-template-columns:1fr 1fr}
-  .seg button{border-bottom:1px solid var(--i40)}
-  .seg button:nth-child(2){border-right:0}
-  .seg button:nth-child(3),.seg button:nth-child(4){border-bottom:0}
+  .seg{grid-auto-flow:row;grid-template-columns:repeat(auto-fit,minmax(95px,1fr))}
   .bin-rail{position:static;height:auto;border-left:0;border-top:1px solid var(--i30);overflow:visible}
   .bin-scroll{overflow:visible}
   .bin{grid-template-columns:repeat(auto-fill,minmax(152px,1fr))}
@@ -493,6 +489,7 @@ footer a{color:var(--i80)}
               <button type="button" data-steps="8" aria-pressed="true">Draft 8<small id="t8"></small></button>
               <button type="button" data-steps="12" aria-pressed="false">Standard 12<small id="t12"></small></button>
               <button type="button" data-steps="25" aria-pressed="false">Fine 25<small id="t25"></small></button>
+              <button type="button" data-steps="36" aria-pressed="false">Ultra 36<small id="t36"></small></button>
               <button type="button" data-steps="50" aria-pressed="false">Reference 50<small id="t50"></small></button>
             </div>
             <input type="hidden" id="steps" name="steps" value="8">
@@ -860,7 +857,7 @@ const maxFrameCount = () => {
 function refreshCost() {
   const minFr = minFrameCount(), nativeMax = engine?.native_max_frames ?? 345;
   const fr = +$('#frames').value || minFr;
-  const stepVals = engine?.steps ? Object.values(engine.steps) : [8, 12, 25, 50];
+  const stepVals = engine?.steps ? Object.values(engine.steps) : [8, 12, 25, 36, 50];
   for (const n of stepVals) {
     const el = $('#t' + n);
     if (el) el.textContent = '~' + short(cost(n, fr));
@@ -3377,11 +3374,13 @@ $('#prompt').oninput = e => {
 };
 
 function setSteps(n) {
-  const v = [8, 12, 25, 50].includes(+n) ? +n : 8;
+  const allowed = engine?.steps ? Object.values(engine.steps).map(Number) : [8, 12, 25, 36, 50];
+  if (!allowed.includes(36)) allowed.push(36);
+  const v = allowed.includes(+n) ? +n : allowed[0];
   $('#steps').value = v;
   $$('#segSteps button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.steps === v)));
-  const words = { 8: 'draft quality, fastest', 12: 'good balance', 25: 'slow, more detail', 50: 'reference quality, slowest' };
-  $('#stepsHint').textContent = `${v} denoising steps · ${words[v]}`;
+  const words = { 8: 'draft quality, fastest', 12: 'good balance', 25: 'slow, more detail', 36: 'ultra detail, very slow', 50: 'reference quality, slowest' };
+  $('#stepsHint').textContent = `${v} denoising steps · ${words[v] || 'custom preset'}`;
   LS.set('steps', v);
   updateComposeSummary();
 }
