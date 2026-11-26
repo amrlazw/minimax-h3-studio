@@ -367,6 +367,85 @@ footer a{color:var(--i80)}
   .dlg .body .span2{grid-column:auto}
 }
 @media (prefers-reduced-motion:reduce){.mon-stage.cut .mon-frame{animation:none}.bar i{transition:none}html{scroll-behavior:auto}}
+
+/* ---------------- Glassmorphism Theme ---------------- */
+:root{
+  --glass:rgba(18,20,26,.58);
+  --glass-hi:rgba(28,31,40,.72);
+  --glass-in:rgba(10,12,16,.52);
+  --glass-bd:rgba(255,255,255,.11);
+  --glass-bd-hi:rgba(255,255,255,.22);
+  --glass-shadow:0 12px 36px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+}
+body{
+  background:
+    radial-gradient(900px 520px at 12% -6%, rgba(255,42,26,.14), transparent 62%),
+    radial-gradient(820px 520px at 88% 8%, rgba(0,192,200,.12), transparent 60%),
+    radial-gradient(700px 600px at 52% 95%, rgba(200,0,200,.09), transparent 65%),
+    #08090c;
+  background-attachment:fixed;
+}
+.strip,.mob-nav{
+  background:rgba(14,16,21,.72);
+  backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  border-bottom-color:var(--glass-bd);
+}
+.compose-panel,.slate-prompt-box,.bin-rail,dialog,.style-pop,.shot,.inputs figure,.refcard,.mon-stage{
+  background:var(--glass);
+  backdrop-filter:blur(18px) saturate(135%);
+  -webkit-backdrop-filter:blur(18px) saturate(135%);
+  border-color:var(--glass-bd);
+  border-radius:12px;
+  box-shadow:var(--glass-shadow);
+}
+.mon-stage{overflow:hidden}
+.mon-hud{
+  background:rgba(14,16,21,.68);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-top-color:var(--glass-bd);
+}
+.mon-frame .burn,.mon-frame .tally{
+  background:rgba(12,14,18,.62);
+  backdrop-filter:blur(12px) saturate(130%);
+  -webkit-backdrop-filter:blur(12px) saturate(130%);
+  border-color:var(--glass-bd);
+  border-radius:8px;
+}
+.bin-rail{border-radius:0;border-left-color:var(--glass-bd)}
+.tile{
+  background:rgba(20,23,30,.55);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-color:var(--glass-bd);
+  border-radius:10px;
+  overflow:hidden;
+  transition:transform .16s ease,border-color .16s ease,background .16s ease;
+}
+.tile:hover{background:var(--glass-hi);border-color:var(--glass-bd-hi);transform:translateY(-1px)}
+.compose-head,.dlg .top,.dlg .foot{border-color:var(--glass-bd)}
+.tagbar,.drop,textarea,input[type=text],input[type=password],input[type=number],select,pre.prev{
+  background:var(--glass-in);
+  border-color:var(--glass-bd);
+  border-radius:8px;
+}
+.btn,.keybtn,.tchip,.osd-btn,.gchip .gl{
+  background:rgba(255,255,255,.06);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border-color:var(--glass-bd);
+  border-radius:8px;
+  transition:background .15s ease,border-color .15s ease;
+}
+.btn:hover,.keybtn:hover,.tchip:hover,.osd-btn:hover{
+  background:rgba(255,255,255,.12);
+  border-color:var(--glass-bd-hi);
+}
+.seg{border-radius:8px;overflow:hidden;border-color:var(--glass-bd);background:var(--glass-bd)}
+.seg button{background:rgba(16,18,24,.72)}
+.seg button[aria-pressed=true]{background:rgba(239,238,233,.92);color:var(--i0)}
+dialog::backdrop{background:rgba(4,6,10,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 </style>
 </head>
 <body>
