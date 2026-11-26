@@ -7,11 +7,14 @@
 import fcntl
 import gc
 import json
+import logging
+from logging.handlers import RotatingFileHandler
 import math
 import os
 import re
 import secrets
 import shutil
+import sys
 import tempfile
 import threading
 import time
@@ -56,6 +59,45 @@ ASPECTS = {
 # directory is the lock, so either lane can take the oldest queued job regardless of who queued it.
 LANE = os.environ.get("H3_LANE", "a")
 GPU = int(os.environ.get("H3_GPU", "0"))
+
+# Persistent rotating log file in /out/logs so worker stdout/stderr survives container rebuilds.
+LOG_DIR = Path("/out/logs")
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / f"h3-{LANE}.log"
+
+
+class _TeeStream:
+    """Mirror stdout/stderr writes to both the original stream and a rotating file handler."""
+    def __init__(self, orig, handler):
+        self._orig = orig
+        self._handler = handler
+        self._buf = ""
+
+    def write(self, data):
+        self._orig.write(data)
+        self._buf += data
+        while "\n" in self._buf:
+            line, self._buf = self._buf.split("\n", 1)
+            if line:
+                rec = logging.LogRecord("h3", logging.INFO, "", 0, line, (), None)
+                self._handler.emit(rec)
+        return len(data)
+
+    def flush(self):
+        self._orig.flush()
+
+    def isatty(self):
+        return False
+
+    def fileno(self):
+        return self._orig.fileno()
+
+
+if not isinstance(sys.stdout, _TeeStream):
+    _log_handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8")
+    _log_handler.setFormatter(logging.Formatter("%(asctime)s  %(message)s", "%Y-%m-%d %H:%M:%S"))
+    sys.stdout = _TeeStream(sys.stdout, _log_handler)
+    sys.stderr = _TeeStream(sys.stderr, _log_handler)
 PEERS = [u.strip().rstrip("/") for u in os.environ.get("H3_PEERS", "").split(",") if u.strip()]
 VRAM_FRACTION = float(os.environ.get("H3_VRAM_FRACTION", "0")) or None
 
@@ -1188,6 +1230,95 @@ def delete(jid: str):
     if d.exists():
         raise HTTPException(500, "failed to remove job directory")
     return {"deleted": jid}
+
+
+@app.get("/api/logs")
+def get_logs(lane: str = LANE, lines: int = 200):
+    """Return the last N lines from the persistent worker log for the requested lane."""
+    safe_lane = re.sub(r"[^a-zA-Z0-9_-]", "", lane or LANE) or LANE
+    p = LOG_DIR / f"h3-{safe_lane}.log"
+    if not p.exists():
+        return {"lane": safe_lane, "path": str(p), "lines": []}
+    n = max(10, min(1000, int(lines)))
+    text = p.read_text(encoding="utf-8", errors="replace").splitlines()
+    return {"lane": safe_lane, "path": str(p), "lines": text[-n:]}
+
+
+def _upscale_mp4_2k(src: Path, dst: Path, target_short: int = 1440):
+    """Upscale an MP4 video stream to 2K short edge with LANCZOS while preserving audio."""
+    import av
+    from PIL import Image
+
+    with av.open(str(src)) as inp:
+        v_in = inp.streams.video[0]
+        a_in = inp.streams.audio[0] if inp.streams.audio else None
+        w0, h0 = v_in.width, v_in.height
+        scale = target_short / min(w0, h0)
+        if scale <= 1.05:
+            shutil.copy2(src, dst)
+            return w0, h0
+        w1 = max(16, (round(w0 * scale) // 16) * 16)
+        h1 = max(16, (round(h0 * scale) // 16) * 16)
+        fps = v_in.average_rate or FPS
+
+        with av.open(str(dst), mode="w") as out:
+            v_out = out.add_stream("libx264", rate=fps)
+            v_out.width = w1
+            v_out.height = h1
+            v_out.pix_fmt = "yuv420p"
+            v_out.options = {"crf": "16", "preset": "medium"}
+
+            a_out = None
+            if a_in is not None:
+                a_out = out.add_stream("aac", rate=a_in.sample_rate or 44100)
+                a_out.layout = a_in.layout.name if a_in.layout else "stereo"
+
+            for pkt in inp.demux([s for s in (v_in, a_in) if s is not None]):
+                if pkt.stream.type == "video":
+                    for frame in pkt.decode():
+                        img = frame.to_image().resize((w1, h1), Image.Resampling.LANCZOS)
+                        nf = av.VideoFrame.from_image(img)
+                        nf.pts = frame.pts
+                        nf.time_base = frame.time_base
+                        for op in v_out.encode(nf):
+                            out.mux(op)
+                elif pkt.stream.type == "audio" and a_out is not None:
+                    for frame in pkt.decode():
+                        frame.pts = None
+                        for op in a_out.encode(frame):
+                            out.mux(op)
+
+            for op in v_out.encode():
+                out.mux(op)
+            if a_out is not None:
+                for op in a_out.encode():
+                    out.mux(op)
+    return w1, h1
+
+
+@app.post("/api/jobs/{jid}/upscale")
+def upscale_job(jid: str):
+    """Upscale a completed job's output MP4 to 2K (1440p short edge)."""
+    j = read(jid)
+    if j.get("status") != "done" or not j.get("output"):
+        raise HTTPException(400, "job is not completed yet")
+    d = JOBS / jid
+    src = d / j["output"]
+    if not src.exists():
+        raise HTTPException(404, "output video missing")
+    out_name = "out-2k.mp4"
+    dst = d / out_name
+    tmp = d / f".tmp-{out_name}"
+    try:
+        w1, h1 = _upscale_mp4_2k(src, tmp)
+        tmp.replace(dst)
+    finally:
+        if tmp.exists():
+            tmp.unlink(missing_ok=True)
+    j["upscaled"] = out_name
+    j["upscaled_size"] = f"{w1}x{h1}"
+    write(j)
+    return {"id": jid, "upscaled": out_name, "width": w1, "height": h1}
 
 
 @app.get("/files/{jid}/{name}")

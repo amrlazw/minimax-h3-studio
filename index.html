@@ -400,6 +400,7 @@ footer a{color:var(--i80)}
   <span class="it lbl"><span class="lamp onair" id="sAirLamp" hidden></span><span id="sAir">Idle</span></span>
   <span class="it lbl" id="sQueue">Queued 0</span>
   <span class="gpu tc" id="sGpu"></span>
+  <button class="keybtn lbl" id="logsBtn" type="button">Logs</button>
   <button class="keybtn lbl" id="keyBtn" type="button">API key</button>
 </header>
 
@@ -470,6 +471,7 @@ footer a{color:var(--i80)}
 
             <div class="field">
               <span class="lbl">References &amp; slot linker <span class="hint">(ref2va)</span></span>
+              <div class="tagbar" id="castBar" style="margin-bottom:6px"></div>
               <div class="mode-switch-bar" id="refSwitchBar" hidden>
                 <span>Keyframes active (<span class="tc">fl2va</span>) — clear keyframes to attach references.</span>
                 <button class="btn sm" type="button" id="clearKfForRefs">Clear keyframes</button>
@@ -681,34 +683,47 @@ footer a{color:var(--i80)}
       <div class="span2" style="display:flex;flex-direction:column;gap:10px" id="bShots"></div>
       <div class="span2"><button class="btn" type="button" id="bAddShot"><svg class="ic"><use href="#i-add"/></svg>Add shot</button></div>
 
-      <div class="field"><label class="lbl" for="bCam">Camera move</label>
-        <select id="bCam">
-          <option value="">none / let the shot decide</option>
-          <option value="holds a static shot">Static</option>
-          <option value="pushes in with small amplitude at slow speed">Push in, slow</option>
-          <option value="pushes in with large amplitude at fast speed">Push in, fast</option>
-          <option value="pulls out with small amplitude at slow speed">Pull out, slow</option>
-          <option value="pans right with small amplitude at slow speed">Pan right</option>
-          <option value="pans left with small amplitude at slow speed">Pan left</option>
-          <option value="trucks right with small amplitude at slow speed">Truck right</option>
-          <option value="tracks the subject with small amplitude at normal speed">Tracking</option>
-          <option value="arcs around the subject with small amplitude at slow speed">Arc shot</option>
-          <option value="tilts up with small amplitude at slow speed">Tilt up</option>
-          <option value="shakes slightly, handheld">Handheld shake</option>
-          <option value="POV of the subject">POV</option>
-        </select></div>
+      <div class="field"><label class="lbl" for="bCamType">Camera motion</label>
+        <div style="display:grid;grid-template-columns:1.2fr 1fr .9fr;gap:6px">
+          <select id="bCamType" aria-label="Camera motion type">
+            <option value="">let the shot decide</option>
+            <option value="holds a static shot">Static</option>
+            <option value="pushes in">Push in</option>
+            <option value="pulls out">Pull out</option>
+            <option value="zooms in">Zoom in</option>
+            <option value="zooms out">Zoom out</option>
+            <option value="pans right">Pan right</option>
+            <option value="pans left">Pan left</option>
+            <option value="trucks right">Truck right</option>
+            <option value="trucks left">Truck left</option>
+            <option value="tracks the subject">Tracking</option>
+            <option value="arcs around the subject">Arc shot</option>
+            <option value="tilts up">Tilt up</option>
+            <option value="tilts down">Tilt down</option>
+            <option value="shakes slightly, handheld">Handheld shake</option>
+            <option value="follows POV of the subject">POV</option>
+          </select>
+          <select id="bCamAmp" aria-label="Camera motion amplitude">
+            <option value="">medium range</option>
+            <option value="with small amplitude">small amplitude</option>
+            <option value="with large amplitude">large amplitude</option>
+          </select>
+          <select id="bCamSpd" aria-label="Camera motion speed">
+            <option value="">normal speed</option>
+            <option value="at slow speed">slow speed</option>
+            <option value="at fast speed">fast speed</option>
+          </select>
+        </div></div>
 
-      <div class="field"><label class="lbl" for="bLang">Dialogue language</label>
+      <div class="field"><label class="lbl" for="bLang">Default dialogue language</label>
         <select id="bLang">
           <option value="English">English</option><option value="Malay">Malay</option><option value="Mandarin">Mandarin</option>
           <option value="Cantonese">Cantonese</option><option value="Tamil">Tamil</option><option value="Japanese">Japanese</option>
           <option value="Korean">Korean</option><option value="Spanish">Spanish</option><option value="Arabic">Arabic</option>
         </select></div>
 
-      <div class="field span2"><label class="lbl" for="bSpeaker">Speaker <span class="hint">voice, age, on-screen or off</span></label>
-        <input id="bSpeaker" type="text" placeholder="the hawker, a low gravelly voice, on screen"></div>
-      <div class="field span2"><label class="lbl" for="bLine">Spoken line <span class="hint">rendered with lip-sync, word for word</span></label>
-        <input id="bLine" type="text" placeholder="Two ringgit, and mind the soup."></div>
+      <div class="span2" style="display:flex;flex-direction:column;gap:8px" id="bDialogues"></div>
+      <div class="span2"><button class="btn sm" type="button" id="bAddDlg"><svg class="ic"><use href="#i-add"/></svg>Add speaker line (S1, S2…)</button></div>
 
       <div class="field span2"><label class="lbl" for="bText">On-screen text <span class="hint">visible text only, kept verbatim</span></label>
         <input id="bText" type="text" placeholder=""></div>
@@ -726,6 +741,25 @@ footer a{color:var(--i80)}
       <button class="btn" type="button" id="bUse" style="background:var(--onair-ink);border-color:var(--onair-ink);color:#fff">Use this prompt</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="logsDlg">
+  <div class="dlg" style="width:min(860px,94vw)">
+    <div class="top">
+      <h2>Worker logs</h2>
+      <div style="display:flex;gap:6px;margin-left:auto;align-items:center">
+        <select id="logLane" class="sortsel" aria-label="Log lane" style="width:auto">
+          <option value="a">Lane A (GPU 0)</option>
+          <option value="b">Lane B (GPU 1)</option>
+        </select>
+        <button class="btn sm" type="button" id="logRefresh">Refresh</button>
+        <button class="btn icon" type="button" id="logClose" aria-label="Close logs"><svg class="ic"><use href="#i-x"/></svg></button>
+      </div>
+    </div>
+    <div class="body" style="padding:14px">
+      <pre class="prev" id="logContent" style="max-height:60vh;min-height:260px;overflow:auto;font-size:12px;line-height:1.45;margin:0">Loading…</pre>
+    </div>
+  </div>
 </dialog>
 
 <dialog id="confirmDlg" class="confirm-dlg">
@@ -2067,14 +2101,37 @@ const INTENT_HINT = {
   product: 'Attach 2–4 photos from different angles on a plain background. Keep the object small in frame so the whole shape is visible.'
 };
 const B = {
-  scene: '', shots: [], style: 'Live-action, cinematic', cam: '', lang: 'English', intent: 'scene',
-  speaker: '', line: '', text: '', sound: '', music: ''
+  scene: '', shots: [], style: 'Live-action, cinematic', camType: '', camAmp: '', camSpd: '', lang: 'English', intent: 'scene',
+  dialogues: [], speaker: '', line: '', text: '', sound: '', music: ''
 };
 function loadDraft() {
   try { Object.assign(B, JSON.parse(LS.get('builder', '{}'))) } catch {}
   if (!B.shots.length) B.shots = [{ text: '' }];
+  if (!Array.isArray(B.dialogues) || !B.dialogues.length) {
+    B.dialogues = (B.speaker || B.line) ? [{ speaker: B.speaker || '', lang: B.lang || 'English', line: B.line || '' }] : [{ speaker: '', lang: B.lang || 'English', line: '' }];
+  }
 }
 function saveDraft() { LS.set('builder', JSON.stringify(B)) }
+function dialoguesUI() {
+  const w = $('#bDialogues');
+  if (!w) return;
+  w.innerHTML = B.dialogues.map((d, i) => `<div class="shot" data-dlg="${i}">
+    <div class="sh"><span class="lbl">Speaker S${i + 1}</span>
+      ${i ? `<button class="btn sm danger" type="button" data-del-dlg="${i}" aria-label="Remove speaker ${i + 1}">${icon('x')}</button>` : ''}</div>
+    <div style="display:grid;grid-template-columns:1.2fr .7fr;gap:6px;margin-bottom:6px">
+      <input type="text" data-dlg-spk="${i}" value="${esc(d.speaker || '')}" placeholder="e.g. the hawker, a low gravelly voice, on screen" aria-label="Speaker ${i + 1}">
+      <select data-dlg-lang="${i}" aria-label="Language for speaker ${i + 1}">
+        ${['English', 'Malay', 'Mandarin', 'Cantonese', 'Tamil', 'Japanese', 'Korean', 'Spanish', 'Arabic'].map(l => `<option value="${l}"${(d.lang || B.lang || 'English') === l ? ' selected' : ''}>${l}</option>`).join('')}
+      </select>
+    </div>
+    <input type="text" data-dlg-line="${i}" value="${esc(d.line || '')}" placeholder="Spoken line (lip-synced word for word)" aria-label="Spoken line ${i + 1}">
+  </div>`).join('');
+  if ($('#bAddDlg')) $('#bAddDlg').disabled = B.dialogues.length >= 4;
+  w.querySelectorAll('[data-dlg-spk]').forEach(el => el.oninput = e => { B.dialogues[+e.target.dataset.dlgSpk].speaker = e.target.value; builderPolished = false; saveDraft(); preview() });
+  w.querySelectorAll('[data-dlg-lang]').forEach(el => el.onchange = e => { B.dialogues[+e.target.dataset.dlgLang].lang = e.target.value; builderPolished = false; saveDraft(); preview() });
+  w.querySelectorAll('[data-dlg-line]').forEach(el => el.oninput = e => { B.dialogues[+e.target.dataset.dlgLine].line = e.target.value; builderPolished = false; saveDraft(); preview() });
+  w.querySelectorAll('[data-del-dlg]').forEach(b => b.onclick = () => { B.dialogues.splice(+b.dataset.delDlg, 1); builderPolished = false; dialoguesUI(); saveDraft(); preview() });
+}
 function updateIntentHint() {
   const el = $('#bIntentHint');
   if (!el) return;
@@ -2119,9 +2176,12 @@ function workflowNow() {
 }
 function updateWorkflowBadges() {
   const wf = workflowNow();
+  const hasFirst = !!$('#compose [name=image]').files[0];
+  const hasLast = !!$('#compose [name=last_image]').files[0];
+  const label = wf === 'fl2va' && hasLast && !hasFirst ? 'fl2va · L2VA' : (wf === 'fl2va' && hasFirst && !hasLast ? 'fl2va · I2VA' : wf);
   for (const el of [$('#wfBadge'), $('#bMode')]) {
     if (!el) continue;
-    el.textContent = wf;
+    el.textContent = label;
     el.className = 'chip ' + wf;
   }
 }
@@ -2130,15 +2190,22 @@ function buildPrompt() {
   const frames = +$('#frames').value || minFrameCount(), dur = (frames / FPS).toFixed(2);
   const hasFirst = !!$('#compose [name=image]').files[0];
   const hasLast = !!$('#compose [name=last_image]').files[0];
-  const style = B.style.trim(), scene = B.scene.trim(), cam = B.cam.trim();
+  const style = B.style.trim(), scene = B.scene.trim();
+  const camParts = [B.camType.trim(), B.camType.trim() && B.camType.trim() !== 'holds a static shot' ? B.camAmp.trim() : '', B.camType.trim() && B.camType.trim() !== 'holds a static shot' ? B.camSpd.trim() : ''].filter(Boolean);
+  const cam = camParts.join(' ');
   const shots = B.shots.map(s => (s.text || '').trim()).filter(Boolean);
   if (!shots.length && scene) shots.push('The scene holds as described, with natural movement and reaction.');
   if (!shots.length) shots.push(scene || 'A single continuous shot.');
-  const text = B.text.trim(), line = B.line.trim(), spk = B.speaker.trim();
+  const text = B.text.trim();
   const sound = B.sound.trim() || 'Natural ambience and physical action sounds continue underneath.';
   const music = B.music.trim() || 'N/A';
   const cut = i => mmss(Math.round((frames * i) / Math.max(2, shots.length)));
-  const dialogue = line ? `${spk ? spk + ' (S1) says' : 'A voice (S1) says'}: <d>[${B.lang}] ${line}</d>` : '';
+  const dlgLines = (B.dialogues || []).filter(d => (d.line || '').trim()).map((d, idx) => {
+    const spk = (d.speaker || '').trim();
+    const lang = d.lang || B.lang || 'English';
+    return `${spk ? `${spk} (S${idx + 1}) says` : `A voice (S${idx + 1}) says`}: <d>[${lang}] ${d.line.trim()}</d>`;
+  });
+  const dialogue = dlgLines.join(' ');
   const body = shots.map((t, i) => {
     const head = i === 0 ? '[Shot 1]' : `[Shot ${i + 1}] At ${cut(i)}, the camera cuts to`;
     const bits = [head, i === 0 ? `${style}. ${scene ? scene + '.' : ''}` : '', i === 0 && cam ? `The camera ${cam}.` : '', t,
@@ -2204,13 +2271,14 @@ function openBuilder() {
   loadDraft();
   builderPolished = false;
   shotsUI();
+  dialoguesUI();
   bindBuilderField('bScene', 'scene');
   bindBuilderField('bStyle', 'style');
-  bindBuilderField('bCam', 'cam');
+  bindBuilderField('bCamType', 'camType');
+  bindBuilderField('bCamAmp', 'camAmp');
+  bindBuilderField('bCamSpd', 'camSpd');
   bindBuilderField('bLang', 'lang');
   bindBuilderField('bIntent', 'intent');
-  bindBuilderField('bSpeaker', 'speaker');
-  bindBuilderField('bLine', 'line');
   bindBuilderField('bText', 'text');
   bindBuilderField('bSound', 'sound');
   bindBuilderField('bMusic', 'music');
@@ -2222,6 +2290,7 @@ function openBuilder() {
 $('#craft').onclick = openBuilder;
 $('#bClose').onclick = () => $('#dlg').close();
 $('#bAddShot').onclick = () => { if (B.shots.length < maxBuilderShots()) { B.shots.push({ text: '' }); builderPolished = false; shotsUI(); preview() } };
+$('#bAddDlg').onclick = () => { if (B.dialogues.length < 4) { B.dialogues.push({ speaker: '', lang: B.lang || 'English', line: '' }); builderPolished = false; dialoguesUI(); saveDraft(); preview() } };
 $('#bUse').onclick = () => {
   $('#prompt').value = $('#bPrev').textContent || buildPrompt();
   $('#prompt').dispatchEvent(new Event('input'));
@@ -2638,9 +2707,12 @@ function slate(j) {
 
     <div class="acts">
       ${j.status === 'done' ? `<a class="btn sm" href="${url(j.id, j.output)}" download="h3-${j.id.slice(0, 8)}.mp4">${icon('dl')}Download</a>` : ''}
+      ${j.status === 'done' && j.upscaled ? `<a class="btn sm" href="${url(j.id, j.upscaled)}" download="h3-${j.id.slice(0, 8)}-2k.mp4">${icon('dl')}2K MP4${j.upscaled_size ? ` (${esc(j.upscaled_size)})` : ''}</a>` : ''}
       ${j.status === 'done' || j.status === 'error' || j.status === 'cancelled' ? `<button class="btn sm" type="button" id="again">${icon('reuse')}Run again</button>` : ''}
       <button class="btn sm" type="button" id="reuse">Load into New Job</button>
       ${j.status === 'done' && j.output ? `<button class="btn sm" type="button" id="useOutRef">${icon('link')}Use output as ref</button>` : ''}
+      ${j.status === 'done' && j.output ? `<button class="btn sm" type="button" id="useLastI2va">${icon('image')}Last frame → I2VA</button>` : ''}
+      ${j.status === 'done' && j.output ? `<button class="btn sm" type="button" id="upscale2k">Upscale 2K</button>` : ''}
       ${j.status !== 'running' ? `<button class="btn sm danger" type="button" id="del">${icon('trash')}Delete</button>` : ''}
     </div>
 
@@ -2803,6 +2875,14 @@ function slate(j) {
   const useOutBtn = $('#useOutRef');
   if (useOutBtn) useOutBtn.onclick = () => useOutputAsRef(j, useOutBtn);
 
+  // Extract last frame -> I2VA First Frame
+  const lastI2vaBtn = $('#useLastI2va');
+  if (lastI2vaBtn) lastI2vaBtn.onclick = () => useLastFrameAsFirst(j, lastI2vaBtn);
+
+  // Upscale output MP4 to 2K
+  const up2kBtn = $('#upscale2k');
+  if (up2kBtn) up2kBtn.onclick = () => upscaleJob(j, up2kBtn);
+
   // Delete with confirm dialog naming #num & title
   const del = $('#del');
   if (del) del.onclick = async () => {
@@ -2954,6 +3034,164 @@ async function useOutputAsRef(j, btn) {
     btn.disabled = false; btn.innerHTML = orig;
   }
 }
+
+async function useLastFrameAsFirst(j, btn) {
+  if (!j?.output) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.textContent = 'Extracting…';
+  try {
+    const r = await fetch(url(j.id, j.output), { credentials: 'same-origin', headers: KEY ? { 'x-api-key': KEY } : {} });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const blob = await r.blob();
+    const vUrl = URL.createObjectURL(blob);
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = vUrl;
+    await new Promise((res, rej) => { v.onloadedmetadata = res; v.onerror = () => rej(new Error('Could not decode video')) });
+    v.currentTime = Math.max(0, (v.duration || 0.1) - 0.05);
+    await new Promise(res => { v.onseeked = res });
+    const cv = document.createElement('canvas');
+    cv.width = v.videoWidth || 1344; cv.height = v.videoHeight || 768;
+    cv.getContext('2d').drawImage(v, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(vUrl);
+    const pngBlob = await new Promise(res => cv.toBlob(res, 'image/png'));
+    const file = new File([pngBlob], `h3-last-${j.num ?? j.id.slice(0, 8)}.png`, { type: 'image/png', lastModified: Date.now() });
+
+    if (refFiles.length) clearAllRefs();
+    clearKeyframes();
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    const inp = $('#compose [name=image]');
+    inp.files = dt.files;
+    inp.dispatchEvent(new Event('change'));
+    if (composeCollapsed) toggleCompose(false);
+    $('#composePanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    msg(`Extracted last frame of #${j.num ?? '—'} as First Frame (I2VA).`);
+  } catch (e) {
+    msg(`Last frame extraction failed: ${e.message}`, true);
+  } finally {
+    btn.disabled = false; btn.innerHTML = orig;
+  }
+}
+
+async function upscaleJob(j, btn) {
+  if (!j?.id) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.textContent = 'Upscaling 2K…';
+  try {
+    const res = await api(`/api/jobs/${j.id}/upscale`, { method: 'POST' });
+    lastSig = ''; slateSig = ''; await poll();
+    msg(`Upscaled #${j.num ?? '—'} to ${res.width}×${res.height} (2K MP4 ready).`);
+  } catch (e) {
+    msg(e.status === 404 ? 'Restart lanes after running jobs finish to enable 2K upscale.' : `Upscale failed: ${e.message}`, true);
+  } finally {
+    btn.disabled = false; btn.innerHTML = orig;
+  }
+}
+
+/* ---------------- cast / subject presets (IndexedDB) ---------------- */
+function openCastDb() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('h3-cast-v1', 1);
+    req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains('casts')) req.result.createObjectStore('casts', { keyPath: 'id' }) };
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+async function listCastPresets() {
+  try {
+    const db = await openCastDb();
+    return await new Promise((res, rej) => {
+      const tx = db.transaction('casts', 'readonly').objectStore('casts').getAll();
+      tx.onsuccess = () => res(tx.result || []);
+      tx.onerror = () => rej(tx.error);
+    });
+  } catch { return [] }
+}
+async function saveCurrentCastPreset() {
+  if (!refFiles.length) return msg('Attach reference files first to save a Cast preset.', true);
+  const name = (window.prompt('Cast preset name (e.g. "Pontianak" or "Host A"):', '') || '').trim();
+  if (!name) return;
+  const items = await Promise.all(refFiles.map(async r => ({
+    name: r.file.name, type: r.file.type, buf: await r.file.arrayBuffer(),
+    kind: r.kind, mode: r.mode, keep_video_audio: r.keep_video_audio,
+    role: r.role, subjectGroup: r.subjectGroup, start: r.start, end: r.end, targetFps: r.targetFps
+  })));
+  const db = await openCastDb();
+  await new Promise((res, rej) => {
+    const tx = db.transaction('casts', 'readwrite');
+    tx.objectStore('casts').put({ id: 'cast-' + Date.now(), name, items });
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+  await renderCastBar();
+  msg(`Saved Cast preset "${name}" (${items.length} file${items.length > 1 ? 's' : ''}).`);
+}
+async function applyCastPreset(id) {
+  const all = await listCastPresets();
+  const c = all.find(x => x.id === id);
+  if (!c) return;
+  if ($('#compose [name=image]').files[0] || $('#compose [name=last_image]').files[0]) clearKeyframes();
+  const files = c.items.map(it => {
+    const f = new File([it.buf], it.name, { type: it.type || 'application/octet-stream', lastModified: Date.now() });
+    return { f, meta: it };
+  });
+  for (const { f, meta } of files) {
+    const thumbUrl = (meta.kind === 'image' || meta.kind === 'video') ? URL.createObjectURL(f) : null;
+    const obj = {
+      id: ++refUid, file: f, kind: meta.kind, mode: meta.mode, keep_video_audio: meta.keep_video_audio,
+      role: meta.role, subjectGroup: meta.subjectGroup, start: meta.start || 0, end: meta.end ?? null,
+      targetFps: meta.targetFps ?? null, probing: false, thumbUrl
+    };
+    refFiles.push(obj);
+    probeLocalRef(obj);
+    probeServerRef(obj);
+  }
+  refreshRefUI();
+  msg(`Loaded Cast "${c.name}" (${c.items.length} ref${c.items.length > 1 ? 's' : ''}).`);
+}
+async function deleteCastPreset(id, name) {
+  const db = await openCastDb();
+  await new Promise((res, rej) => {
+    const tx = db.transaction('casts', 'readwrite');
+    tx.objectStore('casts').delete(id);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+  await renderCastBar();
+  msg(`Removed Cast "${name}".`);
+}
+async function renderCastBar() {
+  const bar = $('#castBar');
+  if (!bar) return;
+  const presets = await listCastPresets();
+  bar.innerHTML = `<button type="button" class="tchip is-bind" id="saveCastBtn" title="Save current references as a reusable Cast preset">+ Save Cast</button>` +
+    presets.map(p => `<span class="tchip is-live" style="display:inline-flex;align-items:center;gap:4px">
+      <button type="button" data-load-cast="${esc(p.id)}" style="background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer" title="Load ${esc(p.name)} (${p.items.length} files)">${esc(p.name)} (${p.items.length})</button>
+      <button type="button" data-del-cast="${esc(p.id)}" data-cast-name="${esc(p.name)}" style="background:none;border:0;padding:0 2px;font:inherit;color:var(--i60);cursor:pointer" aria-label="Delete ${esc(p.name)}">×</button>
+    </span>`).join('');
+  $('#saveCastBtn').onclick = saveCurrentCastPreset;
+  bar.querySelectorAll('[data-load-cast]').forEach(b => b.onclick = () => applyCastPreset(b.dataset.loadCast));
+  bar.querySelectorAll('[data-del-cast]').forEach(b => b.onclick = () => deleteCastPreset(b.dataset.delCast, b.dataset.castName));
+}
+
+/* ---------------- worker logs viewer ---------------- */
+async function loadWorkerLogs() {
+  const pre = $('#logContent');
+  const lane = $('#logLane')?.value || 'a';
+  if (!pre) return;
+  pre.textContent = 'Loading…';
+  try {
+    const res = await api(`/api/logs?lane=${encodeURIComponent(lane)}&lines=200`);
+    pre.textContent = (res.lines && res.lines.length) ? res.lines.join('\n') : `(No log lines yet for lane ${lane.toUpperCase()})`;
+    pre.scrollTop = pre.scrollHeight;
+  } catch (e) {
+    pre.textContent = e.status === 404
+      ? 'Worker log endpoint (/api/logs) will be active after the next container restart (waiting for running jobs to finish).'
+      : `Could not load logs: ${e.message}`;
+  }
+}
+if ($('#logsBtn')) $('#logsBtn').onclick = () => { $('#logsDlg').showModal(); loadWorkerLogs() };
+if ($('#logRefresh')) $('#logRefresh').onclick = loadWorkerLogs;
+if ($('#logLane')) $('#logLane').onchange = loadWorkerLogs;
+if ($('#logClose')) $('#logClose').onclick = () => $('#logsDlg').close();
 
 /* ---------------- clip bin & sidebar ---------------- */
 const clipName = j => j.name || j.title || guessTitle(j.prompt);
@@ -3517,6 +3755,7 @@ const storedEdge = LS.get('refShortEdge', '2048');
 if ($('#refShortEdge').querySelector(`option[value="${storedEdge}"]`)) $('#refShortEdge').value = storedEdge;
 
 refreshRefUI();
+renderCastBar();
 if (KEY) setKey(KEY); else poll();
 setInterval(poll, 3000);
 setInterval(tickLive, 1000);
