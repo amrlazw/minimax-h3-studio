@@ -656,6 +656,20 @@ footer a{color:var(--i80)}
       <button class="btn icon" type="button" id="bClose" aria-label="Close builder"><svg class="ic"><use href="#i-x"/></svg></button>
     </div>
     <div class="body">
+      <div class="field span2"><label class="lbl" for="bTemplate">Commercial use-case starter <span class="hint">optional — fills style, shots, audio &amp; aspect</span></label>
+        <select id="bTemplate">
+          <option value="">Custom / blank</option>
+          <option value="ecom_ad">E-Commerce · Luxury Product Reveal (9:16)</option>
+          <option value="brand_spot">Advertising · Multi-Shot Brand Commercial (16:9)</option>
+          <option value="billboard">Marketing · 21:9 Digital Billboard &amp; Brand Intro</option>
+          <option value="viral_transfer">Social · Viral Ad Rhythm Transfer (&lt;Video&gt; + &lt;Picture&gt;)</option>
+          <option value="packaging">Packaging · Label &amp; Material Mockup (1:1)</option>
+          <option value="micro_drama">Short Drama · Vertical Two-Speaker Scene (9:16)</option>
+          <option value="anime_action">Anime · Stylized Cel-Shaded Action (16:9)</option>
+          <option value="music_video">Music Video · Beat-Synced Performance &amp; Lyrics (16:9)</option>
+        </select>
+        <div class="hint" id="bTemplateHint"></div></div>
+
       <div class="field span2"><label class="lbl" for="bStyle">Style</label>
         <select id="bStyle">
           <option value="Live-action, cinematic">Live-action, cinematic</option>
@@ -2266,6 +2280,138 @@ function preview() {
       ? 'Attach the reference files — this prompt needs them'
       : `${prevLen} characters`;
 }
+
+const COMMERCIAL_PRESETS = {
+  ecom_ad: {
+    aspect: '9:16', intent: 'product', style: 'Live-action, cinematic',
+    camType: 'arcs around the subject', camAmp: 'with small amplitude', camSpd: 'at slow speed',
+    scene: 'A frosted amber glass skincare serum bottle resting on wet black basalt stone under crisp studio rim lighting, surrounded by fresh water droplets',
+    shots: [
+      { text: 'Condensation beads shimmer on the glass as a gentle mist drifts past the bottle.' },
+      { text: 'A hand enters frame, lifts the dropper cleanly, and a golden serum drop catches the key light.' }
+    ],
+    text: 'PURE BOTANICAL SERUM',
+    sound: 'Crisp glass clink, soft mist spray, delicate liquid droplet splash.',
+    music: 'Minimalist luxury electronic pulse with warm Rhodes chords and subtle sub-bass.',
+    hint: 'Tip: Attach 2–4 clean product photos (<Picture 1>..) to lock exact bottle & label design.'
+  },
+  brand_spot: {
+    aspect: '16:9', intent: 'scene', style: 'Live-action, cinematic',
+    camType: 'pushes in', camAmp: 'with small amplitude', camSpd: 'at slow speed',
+    scene: 'A sunlit minimalist architectural studio where a runner laces sleek matte-black carbon sneakers before stepping onto a rain-slicked city bridge at dawn',
+    shots: [
+      { text: 'Tight low-angle framing as the runner bursts forward, water spraying from each stride in slow motion.' },
+      { text: 'A sweeping side track across the bridge as morning sunlight breaks through skyscrapers, ending on a crisp hero pose.' }
+    ],
+    text: 'RUN BEYOND',
+    sound: 'Sharp lace tug, rhythmic footsteps splashing through shallow puddles, city dawn wind.',
+    music: 'Driving modern commercial hybrid score with crisp percussion, warm analog synths, and uplifting strings.',
+    hint: 'Multi-shot commercial template: wide-to-tight continuity with crisp end-card text.'
+  },
+  billboard: {
+    aspect: '21:9', intent: 'scene', style: '3D CG, cinematic',
+    camType: 'pulls out', camAmp: 'with large amplitude', camSpd: 'at slow speed',
+    scene: 'Anamorphic widescreen dark obsidian stage lit by precision volumetric laser beams, brushed titanium monoliths rotating into alignment',
+    shots: [
+      { text: 'Metallic plates lock together with glowing amber seams as sparks cascade across the reflective floor.' },
+      { text: 'The monoliths part smoothly to reveal bold monolithic typography hovering in crisp focus.' }
+    ],
+    text: 'NEXT GEN STUDIO',
+    sound: 'Deep mechanical servo lock, crisp metallic chime, resonant spatial air whoosh.',
+    music: 'Widescreen theatrical brand sting with deep brass swell and crystal synth arpeggio.',
+    hint: 'Formatted for 21:9 digital billboards & widescreen brand reveals.'
+  },
+  viral_transfer: {
+    aspect: '9:16', intent: 'recreate', style: 'Live-action, handheld, natural light',
+    camType: '', camAmp: '', camSpd: '',
+    scene: 'Bright, punchy lifestyle studio with warm daylight and clean backdrop matching the reference video pacing',
+    shots: [
+      { text: 'Follow the exact cut rhythm, whip-pans, and energetic hand gestures of <Video 1> while showcasing the attached subject/product cleanly.' }
+    ],
+    text: '',
+    sound: 'Natural room presence, crisp cloth rustle, snappy gesture swooshes.',
+    music: 'Upbeat modern social-ad groove with tight snare snaps and warm bassline.',
+    hint: 'Tip: Attach 1 reference video (<Video 1>) for pacing/camera transfer + 1–4 photos (<Picture 1>..) for subject/product.'
+  },
+  packaging: {
+    aspect: '1:1', intent: 'product', style: 'Live-action, cinematic',
+    camType: 'arcs around the subject', camAmp: 'with small amplitude', camSpd: 'at slow speed',
+    scene: 'A matte-textured kraft and foil-stamped specialty coffee tin on a warm walnut counter with soft directional window light',
+    shots: [
+      { text: 'Macro detail glides across the embossed gold foil lettering and paper grain, then opens slightly to reveal roasted beans inside.' }
+    ],
+    text: 'SINGLE ORIGIN · ROAST 04',
+    sound: 'Subtle cardboard lid slide, crisp foil crinkle, dry roasted beans settling.',
+    music: 'Warm acoustic guitar harmonics and gentle brushed percussion.',
+    hint: 'Tip: Attach front/side packaging photos (<Picture 1>..) to test label legibility & material finish.'
+  },
+  micro_drama: {
+    aspect: '9:16', intent: 'person', style: 'Live-action, cinematic',
+    camType: 'pushes in', camAmp: 'with small amplitude', camSpd: 'at slow speed',
+    scene: 'A rain-streaked late-night café booth lit by warm tungsten pendant lamps, two characters seated across a wooden table',
+    shots: [
+      { text: 'Speaker 1 leans forward tensely, sliding a folded envelope across the table while avoiding eye contact.' },
+      { text: 'Over-the-shoulder reverse angle as Speaker 2 looks down at the envelope and answers quietly.' }
+    ],
+    dialogues: [
+      { speaker: 'the young woman across the table, quiet tense voice, on screen', lang: 'English', line: 'You told me nobody else knew.' },
+      { speaker: 'the man in the dark coat, calm low voice, on screen', lang: 'English', line: 'I lied so you would come tonight.' }
+    ],
+    text: '',
+    sound: 'Steady rain against café glass, soft ceramic cup clink, subtle fabric movement.',
+    music: 'Intimate melancholic piano motif with soft sustained cello underneath.',
+    hint: 'Tip: Attach 2–4 face photos per character (grouped as <Subject 1> / <Subject 2>) for consistent micro-drama cuts.'
+  },
+  anime_action: {
+    aspect: '16:9', intent: 'scene', style: '2D-animated, cel-shaded',
+    camType: 'tracks the subject', camAmp: 'with large amplitude', camSpd: 'at fast speed',
+    scene: 'High-contrast 2D anime rooftop battle at neon twilight, glowing cyan energy arcs crackling around a cloaked swordfighter',
+    shots: [
+      { text: 'The swordfighter dashes across wet concrete tiles, leaping over shattering vents with dramatic speed-lines.' },
+      { text: 'Dynamic whip-cut close-up as the blade slashes through sparks, sending shockwave rings across the skyline.' }
+    ],
+    text: '',
+    sound: 'Sharp blade unsheathe, crackling plasma arcs, thunderous footstep impacts, howling rooftop wind.',
+    music: 'High-octane anime orchestral rock with fast taiko drums, soaring electric guitar, and brass hits.',
+    hint: 'Anime action preset: high dynamic motion with cel-shaded lighting and impact frames.'
+  },
+  music_video: {
+    aspect: '16:9', intent: 'person', style: 'Live-action, cinematic',
+    camType: 'arcs around the subject', camAmp: 'with large amplitude', camSpd: 'at fast speed',
+    scene: 'Neon-drenched underground concrete warehouse bathed in strobing magenta and electric blue backlight, hazy atmospheric fog',
+    shots: [
+      { text: 'The vocalist performs center-frame under harsh silhouette strobes, moving tightly on the downbeat.' },
+      { text: 'Rapid rhythmic cut to an ultra-wide low-angle shot as kinetic typography flashes behind the performer.' }
+    ],
+    text: 'MIDNIGHT FREQUENCY',
+    sound: 'Heavy warehouse reverb, crowd energy, crisp vocal breath.',
+    music: 'Punchy 128 BPM synth-pop / hip-hop beat with booming 808 sub, crisp hi-hats, and shimmering lead synth.',
+    hint: 'Tip: Attach an <Audio 1> music track (+ optional <Picture 1> performer photo) to lock movement to the beat.'
+  }
+};
+
+function applyCommercialPreset(key) {
+  const p = COMMERCIAL_PRESETS[key];
+  const hintEl = $('#bTemplateHint');
+  if (!p) { if (hintEl) hintEl.textContent = ''; return }
+  B.style = p.style; B.intent = p.intent; B.scene = p.scene;
+  B.camType = p.camType || ''; B.camAmp = p.camAmp || ''; B.camSpd = p.camSpd || '';
+  B.shots = (p.shots || [{ text: '' }]).map(s => ({ text: s.text }));
+  B.dialogues = (p.dialogues && p.dialogues.length) ? p.dialogues.map(d => ({ ...d })) : [{ speaker: '', lang: B.lang || 'English', line: '' }];
+  B.text = p.text || ''; B.sound = p.sound || ''; B.music = p.music || '';
+  if (p.aspect && $('#aspect')?.querySelector(`option[value="${p.aspect}"]`)) {
+    $('#aspect').value = p.aspect; LS.set('aspect', p.aspect);
+  }
+  builderPolished = false;
+  shotsUI(); dialoguesUI();
+  for (const [id, k] of [['bScene','scene'],['bStyle','style'],['bCamType','camType'],['bCamAmp','camAmp'],['bCamSpd','camSpd'],['bIntent','intent'],['bText','text'],['bSound','sound'],['bMusic','music']]) {
+    const el = $('#' + id); if (el) el.value = B[k] ?? '';
+  }
+  updateIntentHint();
+  if (hintEl) hintEl.textContent = p.hint || '';
+  saveDraft(); preview();
+}
+if ($('#bTemplate')) $('#bTemplate').onchange = e => applyCommercialPreset(e.target.value);
 
 function openBuilder() {
   loadDraft();
