@@ -667,6 +667,8 @@ footer a{color:var(--i80)}
           <option value="micro_drama">Short Drama · Vertical Two-Speaker Scene (9:16)</option>
           <option value="anime_action">Anime · Stylized Cel-Shaded Action (16:9)</option>
           <option value="music_video">Music Video · Beat-Synced Performance &amp; Lyrics (16:9)</option>
+          <option value="gaming_hud">Gaming · Cinematics &amp; Interactive HUD (16:9)</option>
+          <option value="saas_ui">SaaS / UI·UX · App Motion &amp; Product Demo (16:9)</option>
         </select>
         <div class="hint" id="bTemplateHint"></div></div>
 
@@ -2387,6 +2389,32 @@ const COMMERCIAL_PRESETS = {
     sound: 'Heavy warehouse reverb, crowd energy, crisp vocal breath.',
     music: 'Punchy 128 BPM synth-pop / hip-hop beat with booming 808 sub, crisp hi-hats, and shimmering lead synth.',
     hint: 'Tip: Attach an <Audio 1> music track (+ optional <Picture 1> performer photo) to lock movement to the beat.'
+  },
+  gaming_hud: {
+    aspect: '16:9', intent: 'scene', style: '3D CG, cinematic',
+    camType: 'pushes in', camAmp: 'with large amplitude', camSpd: 'at fast speed',
+    scene: 'Next-gen sci-fi tactical shooter HUD over a rain-swept cybernetic hangar, holographic radar and crisp ammo counter framing an armored operative',
+    shots: [
+      { text: 'The operative raises a plasma rifle as the holographic visor locks onto targets with crisp animated telemetry.' },
+      { text: 'Rapid tactical dash forward through sparks and volumetric fog as HUD health and mission markers update cleanly.' }
+    ],
+    text: 'SECTOR 09 // TARGET LOCKED',
+    sound: 'Crisp HUD lock-on beeps, heavy exo-suit servo steps, plasma charge hum, rain on metal.',
+    music: 'Adrenaline sci-fi hybrid synth score with industrial percussion and low sub-bass pulses.',
+    hint: 'Gaming & HUD preset: crisp overlay telemetry + 3D cinematic action.'
+  },
+  saas_ui: {
+    aspect: '16:9', intent: 'scene', style: '3D CG, cinematic',
+    camType: 'arcs around the subject', camAmp: 'with small amplitude', camSpd: 'at slow speed',
+    scene: 'Clean frosted-glass SaaS dashboard floating in a bright minimalist studio space, crisp UI cards and animated analytics charts',
+    shots: [
+      { text: 'A smooth cursor glides across the interface, clicking a primary action button that expands a real-time waveform timeline.' },
+      { text: 'The UI cards tilt subtly in 3D parallax as bold clean product typography animates beside the window.' }
+    ],
+    text: 'WORKFLOW AUTOMATED',
+    sound: 'Soft tactile UI clicks, subtle glass whoosh transitions, gentle studio room tone.',
+    music: 'Clean modern tech corporate groove with light marimba plucks and warm synth pads.',
+    hint: 'Tip: Attach a UI screenshot (<Picture 1>) as First Frame or Reference to animate your real app interface.'
   }
 };
 
