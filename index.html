@@ -991,9 +991,19 @@ dialog::backdrop{background:rgba(4,6,10,.62);backdrop-filter:blur(8px);-webkit-b
           <span class="hint">Pick a commercial/use-case starter or enter a concept to generate a locked Series Bible + episode arc</span>
         </div>
         <div class="field">
-          <label class="lbl" for="sStarter">Commercial / Use-case starter <span class="hint">(optional — pre-fills concept, aspect, style &amp; Ep 1)</span></label>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <label class="lbl" for="sStarter">Commercial / Use-case starter <span class="hint">(optional — pre-fills concept, aspect, style &amp; Ep 1)</span></label>
+            <button class="btn sm" type="button" id="sStarterPrevBtn" hidden>Preview demo</button>
+          </div>
           <select id="sStarter"><option value="">Custom / blank</option></select>
           <div class="hint" id="sStarterHint"></div>
+        </div>
+        <div class="style-pop" id="sStarterPrevPop" hidden>
+          <div class="style-pop-head">
+            <span class="lbl" id="sStarterPopTitle">Starter preview</span>
+            <button class="btn icon sm" type="button" id="sStarterPopClose" aria-label="Close starter preview"><svg class="ic"><use href="#i-x"/></svg></button>
+          </div>
+          <div id="sStarterPopBody"></div>
         </div>
         <div class="series-grid">
           <div class="field"><label class="lbl" for="sConcept">Series concept / viral hook</label><input type="text" id="sConcept" placeholder="3-part Malaysian abandoned hospital POV: Pontianak in corridor, chase to stairwell, Pocong ambush"></div>
@@ -4560,10 +4570,27 @@ function syncSeriesFrameOpts() {
   if (ss && bt && ss.options.length <= 1) ss.innerHTML = bt.innerHTML;
 }
 
+function showSeriesStarterPreview(key, open = true) {
+  const p = COMMERCIAL_PRESETS[key];
+  const pop = $('#sStarterPrevPop');
+  const btn = $('#sStarterPrevBtn');
+  if (!pop || !btn) return;
+  if (!p || !p.demoUrl) { pop.hidden = true; btn.hidden = true; return; }
+  btn.hidden = false;
+  if (!open) return;
+  $('#sStarterPopTitle').textContent = p.demoTitle || 'Starter demo video';
+  $('#sStarterPopBody').innerHTML = `
+    <video controls autoplay muted loop playsinline src="${esc(p.demoUrl)}" style="width:100%;max-height:240px;border-radius:8px;background:#000"></video>
+    <div class="hint" style="margin-top:6px">Official MiniMax-H3 guide demo · ${esc(p.style || '')}${p.hint ? ' · ' + esc(p.hint) : ''}</div>`;
+  pop.hidden = false;
+}
+if ($('#sStarterPopClose')) $('#sStarterPopClose').onclick = () => { $('#sStarterPrevPop').hidden = true; };
+if ($('#sStarterPrevBtn')) $('#sStarterPrevBtn').onclick = () => showSeriesStarterPreview($('#sStarter').value, $('#sStarterPrevPop').hidden);
+
 function applySeriesStarter(key) {
   const p = COMMERCIAL_PRESETS[key];
   const hintEl = $('#sStarterHint');
-  if (!p) { if (hintEl) hintEl.textContent = ''; return; }
+  if (!p) { if (hintEl) hintEl.textContent = ''; showSeriesStarterPreview('', false); return; }
   const lbl = $('#sStarter')?.selectedOptions?.[0]?.textContent?.replace(/^[\d.]+\s*·\s*/, '').replace(/\s*\([^)]*\)\s*$/, '').trim() || '';
   if (!$('#sTitle').value.trim() && lbl) $('#sTitle').value = lbl;
   const shotsSummary = (p.shots || []).map(s => s.text).filter(Boolean).join(' ');
@@ -4582,6 +4609,7 @@ function applySeriesStarter(key) {
     renderSeriesEpisodes();
   }
   if (hintEl) hintEl.textContent = p.hint || '';
+  showSeriesStarterPreview(key, true);
   $('#sMsg').textContent = 'Starter loaded — click "Generate Plan" to expand into a full multi-episode series.';
 }
 if ($('#sStarter')) $('#sStarter').onchange = e => applySeriesStarter(e.target.value);
