@@ -1453,19 +1453,16 @@ def _stitch_mp4s(job_ids: list[str], dst_mp4: Path) -> dict:
 
     out_tmp = dst_mp4.with_suffix(".tmp.mp4")
     v_pts = 0
-    a_pts = 0
     try:
         with av.open(str(out_tmp), mode="w") as out_c:
             ov = out_c.add_stream("libx264", rate=target_fps)
             ov.width = target_w
             ov.height = target_h
             ov.pix_fmt = "yuv420p"
-            ov.time_base = Fraction(1, target_fps)
             ov.options = {"crf": "16", "preset": "medium"}
 
             oa = out_c.add_stream("aac", rate=target_sr)
             oa.layout = "stereo"
-            oa.time_base = Fraction(1, target_sr)
 
             for src in sources:
                 clip_v_frames = 0
@@ -1483,7 +1480,7 @@ def _stitch_mp4s(job_ids: list[str], dst_mp4: Path) -> dict:
                         else:
                             vf = frame.reformat(format="yuv420p")
                         vf.pts = v_pts
-                        vf.time_base = ov.time_base
+                        vf.time_base = Fraction(1, target_fps)
                         v_pts += 1
                         clip_v_frames += 1
                         for pkt in ov.encode(vf):
@@ -1497,18 +1494,14 @@ def _stitch_mp4s(job_ids: list[str], dst_mp4: Path) -> dict:
                             for rf in resampler.resample(aframe):
                                 if rf.samples <= 0:
                                     continue
-                                rf.pts = a_pts
-                                rf.time_base = oa.time_base
-                                a_pts += rf.samples
+                                rf.pts = None
                                 clip_a_samples += rf.samples
                                 for pkt in oa.encode(rf):
                                     out_c.mux(pkt)
                         for rf in resampler.resample(None):
                             if rf.samples <= 0:
                                 continue
-                            rf.pts = a_pts
-                            rf.time_base = oa.time_base
-                            a_pts += rf.samples
+                            rf.pts = None
                             clip_a_samples += rf.samples
                             for pkt in oa.encode(rf):
                                 out_c.mux(pkt)
@@ -1522,9 +1515,7 @@ def _stitch_mp4s(job_ids: list[str], dst_mp4: Path) -> dict:
                                 np.zeros((2, n), dtype=np.float32), format="fltp", layout="stereo"
                             )
                             sil.sample_rate = target_sr
-                            sil.pts = a_pts
-                            sil.time_base = oa.time_base
-                            a_pts += n
+                            sil.pts = None
                             pad -= n
                             for pkt in oa.encode(sil):
                                 out_c.mux(pkt)
