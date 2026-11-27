@@ -4651,6 +4651,37 @@ async function uploadSeriesRefFile(file) {
   return res.path;
 }
 
+async function saveSeriesRefsAsCast(refs) {
+  if (!refs || !refs.length) return;
+  const name = (window.prompt('New Cast name (e.g. "My Product" or "Heroine"):', '') || '').trim();
+  if (!name) return;
+  const items = [];
+  for (const rp of refs) {
+    const fetchUrl = seriesRefPreviewUrl(rp);
+    try {
+      const resp = await fetch(fetchUrl, COOKIE || !KEY ? {} : { headers: { 'x-api-key': KEY } });
+      if (!resp.ok) continue;
+      const blob = await resp.blob();
+      const fname = rp.split('/').pop() || 'ref.png';
+      items.push({
+        name: fname, type: blob.type || 'image/png', buf: await blob.arrayBuffer(),
+        kind: 'image', mode: 'image', keep_video_audio: false,
+        role: 'subject_person', subjectGroup: 1, start: 0, end: null, targetFps: null
+      });
+    } catch {}
+  }
+  if (!items.length) { $('#sMsg').textContent = 'Could not read reference images to save as Cast.'; return; }
+  const db = await openCastDb();
+  await new Promise((res, rej) => {
+    const tx = db.transaction('casts', 'readwrite');
+    tx.objectStore('casts').put({ id: 'cast-' + Date.now(), name, items });
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+  await renderCastBar();
+  await renderSeriesEpisodes();
+  $('#sMsg').textContent = `Saved "${name}" (${items.length} image${items.length > 1 ? 's' : ''}) as Cast!`;
+}
+
 async function renderSeriesEpisodes() {
   const s = activeSeriesObj();
   const eps = s ? (s.episodes || []) : draftEpisodes;
@@ -4707,6 +4738,7 @@ async function renderSeriesEpisodes() {
               ${allCasts.map(c => `<option value="${esc(c.id)}">${esc(c.name)} (${(c.items || []).length})</option>`).join('')}
             </select>
             <label class="btn sm" style="cursor:pointer;margin:0">+ Image<input type="file" class="s-ep-file" accept="image/*" multiple hidden></label>
+            ${refs.length ? `<button type="button" class="btn sm s-ep-savecast" title="Save these episode reference images as a reusable Cast">Save as Cast</button>` : ''}
             <button type="button" class="btn sm s-ep-polish" title="Polish episode prompt with LLM">Polish</button>
             <button type="button" class="btn sm s-ep-repair" title="Repair H3 tags &amp; sections">Repair</button>
           </div>` : ''}
@@ -4744,12 +4776,24 @@ async function renderSeriesEpisodes() {
       if (!fls.length) return;
       ep.ref_images = ep.ref_images || [];
       $('#sMsg').textContent = `Uploading ${fls.length} image(s)…`;
+      let added = 0;
       for (const f of fls) {
-        try { ep.ref_images.push(await uploadSeriesRefFile(f)); } catch (e) { $('#sMsg').textContent = 'Upload failed: ' + e.message; }
+        try {
+          ep.ref_images.push(await uploadSeriesRefFile(f));
+          added++;
+        } catch (e) {
+          $('#sMsg').textContent = e.status === 404
+            ? 'Upload endpoint (/api/series/upload_ref) needs a container restart on this lane (use + Save Cast in Studio or port :8004).'
+            : ('Upload failed: ' + e.message);
+        }
       }
-      renderSeriesEpisodes();
-      $('#sMsg').textContent = `Attached ${fls.length} image(s) to Episode ${idx + 1}.`;
+      if (added) {
+        await renderSeriesEpisodes();
+        $('#sMsg').textContent = `Attached ${added} image(s) to Episode ${idx + 1}.`;
+      }
     };
+    const saveCastEl = card.querySelector('.s-ep-savecast');
+    if (saveCastEl) saveCastEl.onclick = () => saveSeriesRefsAsCast(ep.ref_images);
     card.querySelectorAll('.s-ep-ref-del').forEach(b => b.onclick = () => {
       ep.ref_images.splice(+b.dataset.ridx, 1);
       renderSeriesEpisodes();
