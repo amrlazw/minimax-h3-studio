@@ -1636,9 +1636,10 @@ function generateRefBindings(tagged = resolveRefTags(refFiles), intent = B.inten
     const hasProduct = items.some(x => x.r.role === 'subject_product');
     const hasStyle = items.some(x => x.r.role === 'subject_style');
     if (hasPerson) {
+      const castLabel = [...new Set(items.map(x => x.r?.castName).filter(Boolean))].join(' / ') || `Subject ${gnum}`;
       const outfitNote = hasOutfit ? ' with the outfit/costume shown' : '';
-      defs.push(`<Subject ${gnum}> is the person in ${tags}${outfitNote}, ${hasEditVideo ? 'defining their exact facial identity, bone structure, eye shape, nose, lip shape, natural skin texture, pores, hairstyle and build' : 'whose facial identity, hairstyle, skin tone, natural skin texture and build must carry into the target video'}.`);
-      ret.push(`<Subject ${gnum}> (appears in [Shot 1]): fully_preserved - exact facial geometry, skin pores, eye detail, hair and build from ${tags} are preserved without identity drift.`);
+      defs.push(`<Subject ${gnum}> (${castLabel}) is the person in ${tags}${outfitNote}. Do NOT use or copy the background from ${tags}; only use ${tags} to maintain exact facial detail, facial structure, body proportions, facial geometry, skin pores, natural blemishes, eye detail, hairstyle, and identity without smoothing or drift.`);
+      ret.push(`<Subject ${gnum}> (${castLabel}, appears in [Shot 1]): fully_preserved - retain exact facial detail, bone structure, body proportions, facial geometry, skin pores, natural blemishes, eye detail, hairstyle, and identity from ${tags} without smoothing or drift; background from ${tags} is NOT carried over.`);
     } else if (hasOutfit) {
       defs.push(`<Subject ${gnum}> is the outfit/costume in ${tags}, whose fabric, cut, colours and accessories must carry into the target video.`);
       ret.push(`<Subject ${gnum}> (appears in [Shot 1]): fully_preserved - outfit silhouette, texture and details from ${tags} are preserved.`);
@@ -3975,11 +3976,14 @@ async function applyCastPreset(id) {
       files.push({ f: new File([blob], it.name, { type: it.type || blob.type || 'image/png', lastModified: Date.now() }), meta: it });
     }
   }
+  const existingCastGroups = refFiles.filter(r => r.castName && r.castName !== c.name).map(r => Number(r.subjectGroup) || 0);
+  const nextGroup = existingCastGroups.length ? Math.max(...existingCastGroups) + 1 : 1;
   for (const { f, meta } of files) {
     const thumbUrl = (meta.kind === 'image' || meta.kind === 'video') ? URL.createObjectURL(f) : null;
+    const assignedGroup = meta.subjectGroup ? (existingCastGroups.length ? nextGroup : meta.subjectGroup) : (meta.role?.startsWith('subject_') ? nextGroup : 0);
     const obj = {
       id: ++refUid, file: f, kind: meta.kind, mode: meta.mode, keep_video_audio: meta.keep_video_audio,
-      role: meta.role, subjectGroup: meta.subjectGroup, start: meta.start || 0, end: meta.end ?? null,
+      role: meta.role, subjectGroup: assignedGroup, start: meta.start || 0, end: meta.end ?? null,
       targetFps: meta.targetFps ?? null, probing: false, thumbUrl, castName: c.name
     };
     refFiles.push(obj);
@@ -4497,7 +4501,14 @@ $('#compose').onsubmit = async e => {
   fd.delete('references');
   fd.delete('roles');
   const tagged = resolveRefTags(refFiles);
-  fd.set('prompt', expandCastTagsInPrompt($('#prompt').value, tagged));
+  let finalPrompt = expandCastTagsInPrompt($('#prompt').value, tagged);
+  if (tagged.some(t => t.r?.castName) && !/retention_analysis:/i.test(finalPrompt)) {
+    const { defsText, retText } = generateRefBindings(tagged);
+    if (defsText && retText) {
+      finalPrompt = `subject_definitions: ${defsText}\n\nretention_analysis: ${retText}\n\n${finalPrompt}`;
+    }
+  }
+  fd.set('prompt', finalPrompt);
   const refMeta = tagged.map(t => {
     const r = t.r;
     return {
@@ -4979,11 +4990,19 @@ function collectSeriesPayload() {
   const eps = (s ? s.episodes : draftEpisodes).map((e, idx) => {
     const refs = e.ref_images || [];
     let pr = e.prompt || '';
+    const defs = [], ret = [];
+    let gnum = 1;
     for (const [cn, paths] of Object.entries(e.cast_aliases || {})) {
       const tags = (paths || []).map(p => refs.indexOf(p)).filter(i => i >= 0).map(i => `<Picture ${idx === 0 ? i + 1 : i + 2}>`);
       if (!tags.length) continue;
       const joined = tags.length === 1 ? tags[0] : (tags.slice(0, -1).join(', ') + ', and ' + tags[tags.length - 1]);
       pr = pr.replace(new RegExp('<' + cn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '>', 'gi'), joined);
+      defs.push(`<Subject ${gnum}> (${cn}) is the person in ${tags.join(', ')}. Do NOT use or copy the background from ${tags.join(', ')}; only use them to maintain exact facial detail, facial structure, body proportions, facial geometry, skin pores, natural blemishes, eye detail, hairstyle, and identity without smoothing or drift.`);
+      ret.push(`<Subject ${gnum}> (${cn}, appears in [Shot 1]): fully_preserved - retain exact facial detail, bone structure, body proportions, facial geometry, skin pores, natural blemishes, eye detail, hairstyle, and identity from ${tags.join(', ')} without smoothing or drift; background is NOT carried over.`);
+      gnum++;
+    }
+    if (defs.length && !/retention_analysis:/i.test(pr)) {
+      pr = `subject_definitions: ${defs.join(' ')}\n\nretention_analysis: ${ret.join(' ')}\n\n${pr}`;
     }
     return {
       index: idx, beat: e.beat || '', prompt: pr, prompt_locked: !!e.prompt_locked,
