@@ -1605,6 +1605,14 @@ def _adapt_next_episode_prompt(series: dict, prev_ep: dict, next_ep: dict, last_
         ]
     else:
         user_content = text_ctx
+    ref_imgs = [Path(p) for p in (next_ep.get("ref_images") or []) if Path(p).is_file()]
+    if ref_imgs:
+        pic_list = ", ".join(f"<Picture {i + 2}>" for i in range(len(ref_imgs)))
+        text_ctx += (
+            f"\n\nNOTE: This episode uses ref2va with <Picture 1> as the previous scene continuity frame "
+            f"and {pic_list} as exact character/ghost appearance references. Reference both <Picture 1> "
+            f"(for setting/lighting continuity) and {pic_list} (for the ghost's exact appearance) in [Shot 1]/[Shot 2]."
+        )
     try:
         raw = _llm_chat([{"role": "system", "content": sys_msg}, {"role": "user", "content": user_content}],
                         use_vlm=use_vlm, temperature=0.35, max_tokens=1800)
@@ -1617,7 +1625,7 @@ def _adapt_next_episode_prompt(series: dict, prev_ep: dict, next_ep: dict, last_
             raise
     if "<Picture 1>" not in raw:
         raw = "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.\n\n" + raw
-    return _repair_polished_prompt(raw, "fl2va")
+    return _repair_polished_prompt(raw, "ref2va" if ref_imgs else "fl2va")
 
 
 def _enqueue_series_episode(series: dict, ep_idx: int, prev_job_id: str | None = None) -> dict:
@@ -1652,7 +1660,41 @@ def _enqueue_series_episode(series: dict, ep_idx: int, prev_job_id: str | None =
     d.mkdir()
     inputs = {"references": []}
     workflow = "t2va"
-    if prev_job_id:
+    ref_imgs = [Path(p) for p in (ep.get("ref_images") or []) if Path(p).is_file()]
+    if ref_imgs:
+        raw_entries = []
+        idx_r = 0
+        if prev_job_id:
+            src_lf = JOBS / prev_job_id / "last_frame.png"
+            if not src_lf.is_file():
+                shutil.rmtree(d, ignore_errors=True)
+                raise HTTPException(500, f"missing last_frame.png from previous job {prev_job_id[:8]}")
+            shutil.copyfile(src_lf, d / f"ref{idx_r}.png")
+            meta = probe_image(d / f"ref{idx_r}.png")
+            raw_entries.append({
+                "kind": "image", "name": "last_frame.png", "file": f"ref{idx_r}.png",
+                "bytes": (d / f"ref{idx_r}.png").stat().st_size, "role": "style", "ui_role": "keyframe_anchor",
+                "mode": "image", "subject_group": 0, "keep_video_audio": True, "start_sec": 0.0,
+                "end_sec": None, "fps_override": None, "sample_rate_override": None, "has_audio": False,
+                **({k: meta[k] for k in ("width", "height") if meta.get(k)}),
+            })
+            idx_r += 1
+        for rp in ref_imgs:
+            ext = rp.suffix.lower() or ".jpg"
+            fname = f"ref{idx_r}{ext}"
+            shutil.copyfile(rp, d / fname)
+            meta = probe_image(d / fname)
+            raw_entries.append({
+                "kind": "image", "name": rp.name, "file": fname,
+                "bytes": (d / fname).stat().st_size, "role": "person", "ui_role": "subject_person",
+                "mode": "image", "subject_group": 1, "keep_video_audio": True, "start_sec": 0.0,
+                "end_sec": None, "fps_override": None, "sample_rate_override": None, "has_audio": False,
+                **({k: meta[k] for k in ("width", "height") if meta.get(k)}),
+            })
+            idx_r += 1
+        inputs["references"] = resolve_ref_tags(raw_entries)
+        workflow = "ref2va"
+    elif prev_job_id:
         src_lf = JOBS / prev_job_id / "last_frame.png"
         if not src_lf.is_file():
             shutil.rmtree(d, ignore_errors=True)
@@ -1661,8 +1703,8 @@ def _enqueue_series_episode(series: dict, ep_idx: int, prev_job_id: str | None =
         inputs["image"] = "image.png"
         workflow = "fl2va"
 
-    target_h, target_w = _resolve_canvas(workflow, aspect, [])
-    tag_warnings = parse_prompt_tags(prompt, workflow, [], bool(inputs.get("image")), False)
+    target_h, target_w = _resolve_canvas(workflow, aspect, inputs["references"])
+    tag_warnings = parse_prompt_tags(prompt, workflow, inputs["references"], bool(inputs.get("image")), False)
     job = {
         "id": jid, "num": next_number(), "prompt": prompt, "frames": frames, "seed": seed, "steps": steps,
         "inputs": inputs, "workflow": workflow, "aspect": aspect, "target_height": target_h, "target_width": target_w,
