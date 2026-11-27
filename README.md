@@ -12,7 +12,10 @@ Self-hosted, single- or dual-GPU web studio for **MiniMax-H3** video + stereo au
 - **Extended clip lengths** — supports the `17n + 5` VAE frame grid up to `H3_MAX_DURATION` (default `30.0 s` / `719` frames at `24 fps`) by lifting the pipeline's native `15 s` property cap
 - **32 GB VRAM memory patch** — query-chunked self-attention (`H3_ATTN_CHUNK`), chunked FFN/AdaLN (`H3_FFN_CHUNK`), VAE CPU offloading, and automatic OOM weight release + smaller-chunk retry
 - **Dynamic UI configuration** — `index.html` reads limits, frame grid, steps, aspects, and reference rules live from `/api/engine`
-- **Optional LLM sidecars** — prompt polish (`H3_LLM_URL`) and automatic short job titles (`titler.py`)
+- **Optional LLM & VLM sidecars** — prompt polish (`H3_LLM_URL`), automatic short job titles (`titler.py`), and vision-grounded series continuity (`H3_VLM_URL`, e.g., `qwen3.8-27b`)
+- **Series Studio & Queue Tab (`?tab=series`)** — automate multi-episode viral shorts with locked settings, PyAV `last_frame.png` `fl2va` chaining (or per-episode `ref_images` `ref2va`), Autopilot/Review Gate, Mid-Series Pivot, and Commercial/Use-Case Starters with local `/api/demos/` video previews
+- **Selected-Video Stitching** — concatenate any finished series episodes or multi-selected clips from the bin via PyAV (`POST /api/stitch`)
+- **Cast Presets & Pre-Flight VRAM Guard** — reusable local & shared Casts (`GET /api/casts`) with `<CastName>` shorthand expansion, background-free facial/body `retention_analysis`, and dynamic pre-flight GPU VRAM fit checks before single-job submission
 
 ---
 
@@ -75,6 +78,9 @@ Open `http://<server-ip>:8003/` in your browser and paste your `H3_API_KEY` once
 | `H3_LLM_URL` | `""` | Optional OpenAI-compatible endpoint for prompt polish |
 | `H3_LLM_MODEL` | `qwen3.8-neo-coder` | Model name for prompt polish |
 | `H3_LLM_KEY` | `""` | API key for the polish LLM endpoint |
+| `H3_VLM_URL` | `""` | Optional Vision-Language Model endpoint for Series `last_frame.png` continuity |
+| `H3_VLM_MODEL` | `qwen3.8-27b` | Vision model name for Series JIT continuity |
+| `H3_VLM_KEY` | `""` | API key for `H3_VLM_URL` |
 
 ### Launch script overrides
 
@@ -97,7 +103,10 @@ All `/api/*` endpoints (except `/api/health` and `/api/engine`) require either t
 - `POST /api/jobs` — queue a new generation job (`multipart/form-data`)
 - `POST /api/jobs/{id}/cancel` / `retry` / `DELETE /api/jobs/{id}` — manage jobs
 - `POST /api/probe` — inspect uploaded image/video/audio metadata before submitting
-- `POST /api/polish` — polish prompt via configured `H3_LLM_URL`
+- `POST /api/prompt/polish` — polish prompt via configured `H3_LLM_URL`
+- `GET/POST/PATCH/DELETE /api/series*` & `POST /api/series/plan` / `replan` / `start` / `approve` / `upload_ref` — manage automated multi-episode series
+- `POST /api/stitch` & `GET /api/stitches/{id}/file` — concatenate selected finished clips into one MP4
+- `GET /api/casts` / `GET /api/casts/file/{name}` & `GET /api/demos/{name}` — shared Cast presets and cached official demo videos
 
 ---
 

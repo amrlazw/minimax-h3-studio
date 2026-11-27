@@ -128,8 +128,9 @@ Inside `run(job)`:
 
 - **Dynamic Engine Sync** — Fetches `/api/engine` on boot so duration sliders, frame counts, step presets (`Draft 8`, `Std 12`, `Fine 25`, `Ultra 36`, `Max 50`), aspect ratios, and reference rules always match the backend.
 - **Dark-Cinema Glassmorphism UI** — Translucent layered surfaces (`backdrop-filter: blur`), subtle specular borders, and mobile-friendly responsive layout.
-- **Prompt Builder & Presets** — Includes 3-part Camera Grammar (`shot size + angle + movement`), Multi-Speaker Dialogue `(S1, S2...)` `<d>...</d>` tagging, a **Repair** helper (`repairPromptText`), and **21 Use-Case Starters (`3.1`–`3.3.4.4`)** paired with official MiniMax-H3 Notion preview videos.
-- **Cast Presets & Continuity** — Stores reusable character/voice reference sets in browser `IndexedDB`, supports 1-click **Last frame -> I2VA** to chain scenes, and displays render time (`timings.total`) on both the player HUD and clip tiles.
+- **Prompt Builder & Presets** — Includes 3-part Camera Grammar (`shot size + angle + movement`), Multi-Speaker Dialogue `(S1, S2...)` `<d>...</d>` tagging, a **Repair** helper (`repairPromptText`), and **21 Use-Case Starters (`3.1`–`3.3.4.4`)** served locally from `/out/demos/` via `GET /api/demos/{name}`.
+- **Multi-Cast Presets & `<CastName>` Shorthand** — Stores reusable character/voice reference sets in browser `IndexedDB` and shared server JSON (`/out/casts/*.json` via `GET /api/casts`), auto-assigns distinct `<Subject N>` groups per Cast, expands `<CastName>` shorthand tags on submit/save, injects background-free facial/body `retention_analysis`, and runs a pre-flight GPU VRAM fit estimator (`estimateSingleJobVram()`) before queuing single jobs.
+- **Series Studio & Dedicated Queue Tab (`?tab=series`)** — Automates multi-episode series stored in `/out/series/` with atomic dual-lane locks (`<sid>.lock`), PyAV `last_frame.png` extraction (`_extract_last_frame`), `qwen3.8-27b` (`H3_VLM_URL`) vision-grounded JIT continuity prompts, per-episode `ref_images` (`ref2va`) or `fl2va` chaining, **Autopilot / Review Gate**, **Mid-Series Live Pivot**, and **Selected-Videos Stitching** (`POST /api/stitch` via `_stitch_mp4s()`).
 
 ---
 
