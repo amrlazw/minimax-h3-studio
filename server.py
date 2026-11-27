@@ -37,6 +37,7 @@ SERIES = Path("/out/series"); SERIES.mkdir(parents=True, exist_ok=True)
 STITCHES = Path("/out/stitches"); STITCHES.mkdir(parents=True, exist_ok=True)
 CASTS = Path("/out/casts"); CASTS.mkdir(parents=True, exist_ok=True)
 GHOST_REFS = Path("/out/ghost-refs"); GHOST_REFS.mkdir(parents=True, exist_ok=True)
+DEMOS = Path("/out/demos"); DEMOS.mkdir(parents=True, exist_ok=True)
 # One history file per lane. Two lanes finishing at the same moment would otherwise rewrite the
 # same file: read-modify-write loses an entry, and a reader catching a partial write sees [] and
 # falls back to the default cost model. Per-lane files remove the lock entirely.
@@ -2139,6 +2140,17 @@ def cast_file(name: str):
     if not p.is_file():
         raise HTTPException(404, "cast reference file not found")
     return FileResponse(p)
+
+
+@app.get("/api/demos/{name}")
+def demo_file(name: str):
+    """Serve a locally cached official MiniMax-H3 use-case demo video from /out/demos/."""
+    if not re.fullmatch(r"[\w.-]+", name):
+        raise HTTPException(404)
+    p = DEMOS / name
+    if not p.is_file():
+        raise HTTPException(404, "demo video not found")
+    return FileResponse(p, media_type="video/mp4")
 
 
 @app.post("/api/prompt/validate")
