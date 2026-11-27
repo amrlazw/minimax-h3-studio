@@ -4733,12 +4733,17 @@ function loadSeriesIntoForm(s) {
   stitchCheckedEps = new Set((s.episodes || []).filter(e => e.status === 'done' && e.job_id).map(e => e.job_id));
   if (s.stitched_id) {
     $('#sStitchedBox').hidden = false;
-    $('#sStitchedVid').src = stitchFileUrl(s.stitched_id, false);
+    const vid = $('#sStitchedVid');
+    if (vid.dataset.stid !== s.stitched_id) {
+      vid.dataset.stid = s.stitched_id;
+      vid.src = stitchFileUrl(s.stitched_id, false);
+    }
     $('#sStitchedDl').href = stitchFileUrl(s.stitched_id, true);
     const safeTitle = (s.title || 'H3 Stitched Series').replace(/[\\/:*?"<>|]+/g, ' ').trim();
     $('#sStitchedDl').setAttribute('download', `${safeTitle}.mp4`);
   } else {
     $('#sStitchedBox').hidden = true;
+    $('#sStitchedVid').dataset.stid = '';
   }
   renderSeriesEpisodes();
 }
@@ -4949,7 +4954,14 @@ $('#batchStitchGo').onclick = async () => {
   $('#batchStitchGo').disabled = false;
 };
 
-setInterval(() => { if ($('#seriesDlg').open && activeSeriesId) loadSeriesList(activeSeriesId); }, 5000);
+setInterval(() => {
+  if (!$('#seriesDlg').open || !activeSeriesId) return;
+  const cur = activeSeriesObj();
+  if (cur && ['done', 'error', 'cancelled'].includes(cur.status)) return;
+  const ae = document.activeElement;
+  if (ae && ae.closest('#seriesDlg') && ['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName)) return;
+  loadSeriesList(activeSeriesId);
+}, 5000);
 
 /* ---------------- Dedicated Series & Queue Visibility Tab ---------------- */
 let activePageTab = (new URLSearchParams(location.search).get('tab') === 'series' || location.hash === '#series') ? 'series' : 'studio';
