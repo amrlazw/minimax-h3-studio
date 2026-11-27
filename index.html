@@ -4625,28 +4625,68 @@ function stitchFileUrl(stid, dl = false) {
   return `/api/stitches/${stid}/file` + (dl ? '?dl=1' : '') + (COOKIE || !KEY ? '' : (dl ? '&' : '?') + 'key=' + encodeURIComponent(KEY));
 }
 
-function renderSeriesEpisodes() {
+function seriesRefPreviewUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('/out/ghost-refs/')) {
+    const u = `/api/casts/file/${encodeURIComponent(path.slice('/out/ghost-refs/'.length))}`;
+    return COOKIE || !KEY ? u : `${u}?key=${encodeURIComponent(KEY)}`;
+  }
+  const m = path.match(/^\/out\/jobs\/([0-9a-f]{32})\/(.+)$/);
+  if (m) return url(m[1], m[2]);
+  return path;
+}
+
+function castItemToServerPath(it) {
+  if (!it?.url) return null;
+  if (it.url.startsWith('/api/casts/file/')) return '/out/ghost-refs/' + decodeURIComponent(it.url.slice('/api/casts/file/'.length));
+  const m = it.url.match(/^\/files\/([0-9a-f]{32})\/(.+)$/);
+  if (m) return `/out/jobs/${m[1]}/${decodeURIComponent(m[2])}`;
+  return null;
+}
+
+async function uploadSeriesRefFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await api('/api/series/upload_ref', { method: 'POST', body: fd });
+  return res.path;
+}
+
+async function renderSeriesEpisodes() {
   const s = activeSeriesObj();
   const eps = s ? (s.episodes || []) : draftEpisodes;
   const box = $('#sEpisodes');
   box.innerHTML = '';
+  const [localCasts] = await Promise.all([listCastPresets(), serverCasts.length ? Promise.resolve(serverCasts) : fetchServerCasts()]);
+  const allCasts = [...localCasts.map(c => ({ ...c, _local: true })), ...serverCasts];
   let doneCount = 0;
   eps.forEach((ep, idx) => {
     if (ep.status === 'done' && ep.job_id) doneCount++;
     const st = ep.status || 'pending';
     const isReview = st === 'waiting_review';
     const editable = !s || st === 'pending' || st === 'waiting_review' || st === 'draft';
+    const refs = ep.ref_images || [];
     const card = document.createElement('div');
     card.className = `series-ep${isReview ? ' is-review' : ''}`;
     const thumbSrc = (ep.job_id && ep.last_frame) ? url(ep.job_id, ep.last_frame) : ((ep.job_id && ep.poster) ? url(ep.job_id, ep.poster) : '');
     const badgeCls = st === 'done' ? 'done' : st === 'running' ? 'running' : isReview ? 'review' : '';
     const adaptBadge = ep.adapted_with ? `<span class="series-badge vlm">${esc(ep.adapted_with.toUpperCase())}</span>` : '';
+    const wfPill = refs.length ? `<span class="chip ref2va">ref2va (${refs.length} ref${refs.length > 1 ? 's' : ''})</span>` : `<span class="chip ${idx === 0 ? 't2va' : 'fl2va'}">${idx === 0 ? 't2va' : 'fl2va'}</span>`;
     const epChk = (st === 'done' && ep.job_id)
       ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--i80)"><input type="checkbox" class="s-ep-chk" data-jid="${esc(ep.job_id)}" ${stitchCheckedEps.has(ep.job_id) ? 'checked' : ''}> Stitch</label>`
       : '';
+    const refsHtml = refs.map((rp, rIdx) => {
+      const picNum = idx === 0 ? rIdx + 1 : rIdx + 2;
+      const fname = rp.split('/').pop();
+      return `<span class="tchip is-live" style="display:inline-flex;align-items:center;gap:5px;padding:3px 6px">
+        <img src="${esc(seriesRefPreviewUrl(rp))}" alt="" style="width:24px;height:24px;object-fit:cover;border-radius:4px">
+        <span>&lt;Picture ${picNum}&gt; ${esc(fname)}</span>
+        ${editable ? `<button type="button" class="s-ep-ref-del" data-ridx="${rIdx}" style="background:none;border:0;padding:0 2px;color:var(--i60);cursor:pointer">×</button>` : ''}
+      </span>`;
+    }).join('');
     card.innerHTML = `
       <div class="series-ep-head">
         <span class="lbl">Episode ${idx + 1}</span>
+        ${wfPill}
         <span class="series-badge ${badgeCls}">${esc(st.replace('_', ' '))}</span>
         ${ep.job_num ? `<span class="tc" style="font-size:12px;color:var(--i70)">#${ep.job_num}</span>` : ''}
         ${adaptBadge}
@@ -4661,6 +4701,16 @@ function renderSeriesEpisodes() {
         <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-width:0">
           <input type="text" class="s-ep-beat" placeholder="Story beat / cliffhanger (e.g. runs to stairwell, hears footsteps)" value="${esc(ep.beat || '')}" ${editable ? '' : 'disabled'}>
           <textarea class="s-ep-prompt" style="min-height:74px;font-size:12.5px" placeholder="${idx === 0 ? 'Episode 1 prompt (t2va)...' : 'Episode ' + (idx + 1) + ' draft prompt (or let VLM JIT-adapt from last frame)...'}" ${editable ? '' : 'disabled'}>${esc(ep.prompt || '')}</textarea>
+          ${editable ? `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <select class="s-ep-cast sortsel" style="max-width:190px;padding:4px 8px;font-size:12px">
+              <option value="">+ Add Cast ref…</option>
+              ${allCasts.map(c => `<option value="${esc(c.id)}">${esc(c.name)} (${(c.items || []).length})</option>`).join('')}
+            </select>
+            <label class="btn sm" style="cursor:pointer;margin:0">+ Image<input type="file" class="s-ep-file" accept="image/*" multiple hidden></label>
+            <button type="button" class="btn sm s-ep-polish" title="Polish episode prompt with LLM">Polish</button>
+            <button type="button" class="btn sm s-ep-repair" title="Repair H3 tags &amp; sections">Repair</button>
+          </div>` : ''}
+          ${refs.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${refsHtml}</div>` : ''}
         </div>
       </div>`;
     const beatEl = card.querySelector('.s-ep-beat');
@@ -4669,6 +4719,64 @@ function renderSeriesEpisodes() {
     beatEl.oninput = () => { ep.beat = beatEl.value };
     prEl.oninput = () => { ep.prompt = prEl.value };
     lkEl.onchange = () => { ep.prompt_locked = lkEl.checked };
+    const castSel = card.querySelector('.s-ep-cast');
+    if (castSel) castSel.onchange = async () => {
+      const c = allCasts.find(x => x.id === castSel.value);
+      castSel.value = '';
+      if (!c) return;
+      ep.ref_images = ep.ref_images || [];
+      $('#sMsg').textContent = `Attaching Cast "${c.name}"…`;
+      for (const it of (c.items || [])) {
+        if (it.kind && it.kind !== 'image') continue;
+        const srv = castItemToServerPath(it);
+        if (srv) { if (!ep.ref_images.includes(srv)) ep.ref_images.push(srv); }
+        else if (it.buf) {
+          const f = new File([it.buf], it.name || 'cast.png', { type: it.type || 'image/png' });
+          try { ep.ref_images.push(await uploadSeriesRefFile(f)); } catch (e) { $('#sMsg').textContent = 'Cast upload failed: ' + e.message; }
+        }
+      }
+      renderSeriesEpisodes();
+      $('#sMsg').textContent = `Attached Cast "${c.name}" to Episode ${idx + 1}.`;
+    };
+    const fileInp = card.querySelector('.s-ep-file');
+    if (fileInp) fileInp.onchange = async () => {
+      const fls = [...(fileInp.files || [])];
+      if (!fls.length) return;
+      ep.ref_images = ep.ref_images || [];
+      $('#sMsg').textContent = `Uploading ${fls.length} image(s)…`;
+      for (const f of fls) {
+        try { ep.ref_images.push(await uploadSeriesRefFile(f)); } catch (e) { $('#sMsg').textContent = 'Upload failed: ' + e.message; }
+      }
+      renderSeriesEpisodes();
+      $('#sMsg').textContent = `Attached ${fls.length} image(s) to Episode ${idx + 1}.`;
+    };
+    card.querySelectorAll('.s-ep-ref-del').forEach(b => b.onclick = () => {
+      ep.ref_images.splice(+b.dataset.ridx, 1);
+      renderSeriesEpisodes();
+    });
+    const polEl = card.querySelector('.s-ep-polish');
+    if (polEl) polEl.onclick = async () => {
+      if (!prEl.value.trim()) return;
+      polEl.disabled = true; $('#sMsg').textContent = `Polishing Episode ${idx + 1}…`;
+      try {
+        const mode = (ep.ref_images && ep.ref_images.length) ? 'ref2va' : (idx === 0 ? 't2va' : 'fl2va');
+        const res = await api('/api/prompt/polish', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ draft: prEl.value, mode, frames: +$('#sFrames').value || 362, aspect: $('#sAspect').value || '16:9' })
+        });
+        ep.prompt = res.prompt || prEl.value;
+        prEl.value = ep.prompt;
+        $('#sMsg').textContent = `Polished Episode ${idx + 1}.`;
+      } catch (e) { $('#sMsg').textContent = 'Polish failed: ' + e.message; }
+      polEl.disabled = false;
+    };
+    const repEl = card.querySelector('.s-ep-repair');
+    if (repEl) repEl.onclick = () => {
+      const mode = (ep.ref_images && ep.ref_images.length) ? 'ref2va' : (idx === 0 ? 't2va' : 'fl2va');
+      ep.prompt = repairPromptText(prEl.value, mode);
+      prEl.value = ep.prompt;
+      $('#sMsg').textContent = `Repaired Episode ${idx + 1} prompt tags.`;
+    };
     const chkEl = card.querySelector('.s-ep-chk');
     if (chkEl) chkEl.onchange = () => { if (chkEl.checked) stitchCheckedEps.add(ep.job_id); else stitchCheckedEps.delete(ep.job_id); };
     const appEl = card.querySelector('.s-ep-approve');
@@ -4780,7 +4888,8 @@ async function loadSeriesList(selectId = null) {
 function collectSeriesPayload() {
   const s = activeSeriesObj();
   const eps = (s ? s.episodes : draftEpisodes).map((e, idx) => ({
-    index: idx, beat: e.beat || '', prompt: e.prompt || '', prompt_locked: !!e.prompt_locked
+    index: idx, beat: e.beat || '', prompt: e.prompt || '', prompt_locked: !!e.prompt_locked,
+    ref_images: e.ref_images || []
   }));
   return {
     title: ($('#sTitle').value || 'Untitled Series').trim(),

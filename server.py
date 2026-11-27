@@ -1827,6 +1827,7 @@ async def create_series(request: Request):
             "beat": (e.get("beat") or "").strip(),
             "prompt": (e.get("prompt") or "").strip(),
             "prompt_locked": bool(e.get("prompt_locked", False)),
+            "ref_images": [str(x).strip() for x in (e.get("ref_images") or []) if str(x).strip()],
             "job_id": None,
             "status": "pending",
             "last_frame": None,
@@ -1876,7 +1877,7 @@ async def update_series(sid: str, request: Request):
                 if idx < len(s["episodes"]):
                     cur = s["episodes"][idx]
                     if cur.get("status") in ("pending", "waiting_review", "draft"):
-                        for ek in ("beat", "prompt", "prompt_locked"):
+                        for ek in ("beat", "prompt", "prompt_locked", "ref_images"):
                             if ek in patch_ep:
                                 cur[ek] = patch_ep[ek]
         _write_series(s)
@@ -1891,6 +1892,22 @@ def delete_series(sid: str):
             raise HTTPException(404, "series not found")
         p.unlink()
     return {"deleted": sid}
+
+
+@app.post("/api/series/upload_ref")
+async def upload_series_ref(file: UploadFile = File(...)):
+    """Upload a reference image for a Series Studio episode into /out/ghost-refs/."""
+    if kind_of(file) != "image":
+        raise HTTPException(400, "only image files are supported as series episode references")
+    raw_name = Path(file.filename or "ref.png").name
+    safe = re.sub(r"[^a-zA-Z0-9._-]", "_", raw_name)[:80] or "ref.png"
+    fname = f"{uuid.uuid4().hex[:10]}_{safe}"
+    dst = GHOST_REFS / fname
+    data = await file.read()
+    if len(data) > 25 * 2**20:
+        raise HTTPException(400, "reference image too large (max 25 MB)")
+    dst.write_bytes(data)
+    return {"path": f"/out/ghost-refs/{fname}", "url": f"/api/casts/file/{fname}", "name": safe}
 
 
 @app.post("/api/series/plan")
