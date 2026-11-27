@@ -1203,6 +1203,27 @@ const maxFrameCount = () => {
   return arr[arr.length - 1];
 };
 
+function estimateSingleJobVram() {
+  const wf = workflowNow();
+  const fr = +$('#frames')?.value || minFrameCount();
+  const refEdge = +$('#refShortEdge')?.value || 2048;
+  const imgCount = refFiles.filter(r => r.kind === 'image').length;
+  const vidCount = refFiles.filter(r => r.kind === 'video' && r.mode !== 'video_audio_only').length;
+  const audCount = refFiles.filter(r => r.kind === 'audio' || (r.kind === 'video' && (r.mode === 'video_audio_only' || (r.keep_video_audio !== false && r.hasAudio !== false)))).length;
+  const baseGb = wf === 'ref2va' ? 9.5 : 6.0;
+  const videoGb = (fr / 362) * (wf === 'ref2va' ? 6.2 : 4.8);
+  const edgeScale = Math.pow(refEdge / 1024, 1.65);
+  const refsGb = wf === 'ref2va' ? (imgCount * 1.15 * edgeScale + vidCount * 2.8 + audCount * 0.4) : 0;
+  const estGb = +(baseGb + videoGb + refsGb).toFixed(1);
+
+  const pin = ($('#pin')?.value || '').trim().toLowerCase();
+  const pool = (lanes && lanes.length) ? (pin ? lanes.filter(l => l.lane === pin) : lanes) : (health ? [health] : []);
+  const gpuTotals = pool.map(l => Number(l.gpu?.total_gb || 31.4)).filter(Boolean);
+  const totalGb = gpuTotals.length ? Math.max(...gpuTotals) : 31.4;
+  const usableGb = +(totalGb - 1.4).toFixed(1);
+  return { estGb, usableGb, totalGb, fits: estGb <= usableGb, wf, fr, refEdge, imgCount };
+}
+
 function refreshCost() {
   const minFr = minFrameCount(), nativeMax = engine?.native_max_frames ?? 345;
   const fr = +$('#frames').value || minFr;
@@ -1212,7 +1233,9 @@ function refreshCost() {
     if (el && n) el.textContent = '~' + short(cost(n, fr));
   }
   const lh = $('#lenHint');
-  if (lh) lh.textContent = `${(fr / FPS).toFixed(2)} s · ${fr} frames` + (fr <= minFr ? ` · shortest H3 allows (${Math.floor(minFr / FPS)} s floor)` : fr > nativeMax ? ' · extended clip — heavy VRAM; use ≤ 25 steps' : '');
+  const vfit = estimateSingleJobVram();
+  const vTxt = ` · GPU ~${vfit.estGb}/${vfit.usableGb} GB ${vfit.fits ? '✓' : '⚠ OOM risk'}`;
+  if (lh) lh.textContent = `${(fr / FPS).toFixed(2)} s · ${fr} frames` + (fr <= minFr ? ` · shortest H3 allows (${Math.floor(minFr / FPS)} s floor)` : fr > nativeMax ? ' · extended clip — heavy VRAM; use ≤ 25 steps' : '') + vTxt;
 }
 
 function legalFrameFor(val) {
@@ -4450,8 +4473,8 @@ $('#dice').onclick = () => { $('#seed').value = ''; LS.del('seed') };
 $('#seed').oninput = e => LS.set('seed', e.target.value);
 $('#audio_mode').onchange = e => LS.set('audio', e.target.value);
 $('#aspect').onchange = e => LS.set('aspect', e.target.value);
-$('#pin').onchange = e => LS.set('pin', e.target.value);
-$('#refShortEdge').onchange = e => LS.set('refShortEdge', e.target.value);
+$('#pin').onchange = e => { LS.set('pin', e.target.value); refreshCost() };
+$('#refShortEdge').onchange = e => { LS.set('refShortEdge', e.target.value); refreshCost() };
 
 $('#prompt').oninput = e => {
   $('#pcount').textContent = `${e.target.value.length.toLocaleString()} / 20,000 characters`;
@@ -4495,6 +4518,21 @@ function guard() {
 $('#compose').onsubmit = async e => {
   e.preventDefault();
   const bad = guard(); if (bad) return msg(bad, true);
+
+  $('#go').disabled = true;
+  $('#go').textContent = 'Checking GPU…';
+  try { lanes = await api('/api/lanes'); } catch {}
+  const vfit = estimateSingleJobVram();
+  if (!vfit.fits) {
+    $('#go').disabled = false;
+    $('#go').textContent = 'Generate';
+    const fixHint = vfit.refEdge > 1024
+      ? 'Drop Ref short edge to 1024 (Fast) or shorten the clip.'
+      : 'Shorten the clip length or remove a reference photo.';
+    return msg(`Too heavy for GPU (~${vfit.estGb} GB needed vs ${vfit.usableGb} GB usable on ${vfit.totalGb} GB GPU). ${fixHint}`, true);
+  }
+  $('#go').textContent = 'Generate';
+
   const fd = new FormData(e.target);
 
   // Ensure exact ordered references & server.py v2.3 ref_meta schema
