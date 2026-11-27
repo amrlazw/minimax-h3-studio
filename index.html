@@ -3870,15 +3870,29 @@ async function saveCurrentCastPreset() {
   await renderCastBar();
   msg(`Saved Cast preset "${name}" (${items.length} file${items.length > 1 ? 's' : ''}).`);
 }
+let serverCasts = [];
+async function fetchServerCasts() {
+  try { serverCasts = await api('/api/casts'); } catch { serverCasts = []; }
+  return serverCasts;
+}
 async function applyCastPreset(id) {
-  const all = await listCastPresets();
-  const c = all.find(x => x.id === id);
+  const local = await listCastPresets();
+  const c = local.find(x => x.id === id) || serverCasts.find(x => x.id === id);
   if (!c) return;
   if ($('#compose [name=image]').files[0] || $('#compose [name=last_image]').files[0]) clearKeyframes();
-  const files = c.items.map(it => {
-    const f = new File([it.buf], it.name, { type: it.type || 'application/octet-stream', lastModified: Date.now() });
-    return { f, meta: it };
-  });
+  const files = [];
+  for (const it of (c.items || [])) {
+    if (it.buf) {
+      files.push({ f: new File([it.buf], it.name, { type: it.type || 'application/octet-stream', lastModified: Date.now() }), meta: it });
+    } else if (it.url) {
+      const sep = it.url.includes('?') ? '&' : '?';
+      const fetchUrl = COOKIE || !KEY ? it.url : `${it.url}${sep}key=${encodeURIComponent(KEY)}`;
+      const resp = await fetch(fetchUrl, COOKIE || !KEY ? {} : { headers: { 'x-api-key': KEY } });
+      if (!resp.ok) { msg(`Failed to fetch cast asset ${it.name}: HTTP ${resp.status}`, true); continue; }
+      const blob = await resp.blob();
+      files.push({ f: new File([blob], it.name, { type: it.type || blob.type || 'image/png', lastModified: Date.now() }), meta: it });
+    }
+  }
   for (const { f, meta } of files) {
     const thumbUrl = (meta.kind === 'image' || meta.kind === 'video') ? URL.createObjectURL(f) : null;
     const obj = {
@@ -3891,7 +3905,7 @@ async function applyCastPreset(id) {
     probeServerRef(obj);
   }
   refreshRefUI();
-  msg(`Loaded Cast "${c.name}" (${c.items.length} ref${c.items.length > 1 ? 's' : ''}).`);
+  msg(`Loaded Cast "${c.name}" (${files.length} ref${files.length > 1 ? 's' : ''}).`);
 }
 async function deleteCastPreset(id, name) {
   const db = await openCastDb();
@@ -3906,12 +3920,15 @@ async function deleteCastPreset(id, name) {
 async function renderCastBar() {
   const bar = $('#castBar');
   if (!bar) return;
-  const presets = await listCastPresets();
-  bar.innerHTML = `<button type="button" class="tchip is-bind" id="saveCastBtn" title="Save current references as a reusable Cast preset">+ Save Cast</button>` +
-    presets.map(p => `<span class="tchip is-live" style="display:inline-flex;align-items:center;gap:4px">
+  const [localPresets, remotePresets] = await Promise.all([listCastPresets(), fetchServerCasts()]);
+  const localHtml = localPresets.map(p => `<span class="tchip is-live" style="display:inline-flex;align-items:center;gap:4px">
       <button type="button" data-load-cast="${esc(p.id)}" style="background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer" title="Load ${esc(p.name)} (${p.items.length} files)">${esc(p.name)} (${p.items.length})</button>
       <button type="button" data-del-cast="${esc(p.id)}" data-cast-name="${esc(p.name)}" style="background:none;border:0;padding:0 2px;font:inherit;color:var(--i60);cursor:pointer" aria-label="Delete ${esc(p.name)}">×</button>
     </span>`).join('');
+  const remoteHtml = remotePresets.map(p => `<span class="tchip is-live" style="display:inline-flex;align-items:center;gap:4px">
+      <button type="button" data-load-cast="${esc(p.id)}" style="background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer" title="Shared Cast: ${esc(p.name)} (${(p.items || []).length} files)">${esc(p.name)} (${(p.items || []).length})</button>
+    </span>`).join('');
+  bar.innerHTML = `<button type="button" class="tchip is-bind" id="saveCastBtn" title="Save current references as a reusable Cast preset">+ Save Cast</button>` + localHtml + remoteHtml;
   $('#saveCastBtn').onclick = saveCurrentCastPreset;
   bar.querySelectorAll('[data-load-cast]').forEach(b => b.onclick = () => applyCastPreset(b.dataset.loadCast));
   bar.querySelectorAll('[data-del-cast]').forEach(b => b.onclick = () => deleteCastPreset(b.dataset.delCast, b.dataset.castName));

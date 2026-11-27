@@ -35,6 +35,8 @@ KEY = os.environ["H3_API_KEY"].encode()
 JOBS = Path("/out/jobs"); JOBS.mkdir(parents=True, exist_ok=True)
 SERIES = Path("/out/series"); SERIES.mkdir(parents=True, exist_ok=True)
 STITCHES = Path("/out/stitches"); STITCHES.mkdir(parents=True, exist_ok=True)
+CASTS = Path("/out/casts"); CASTS.mkdir(parents=True, exist_ok=True)
+GHOST_REFS = Path("/out/ghost-refs"); GHOST_REFS.mkdir(parents=True, exist_ok=True)
 # One history file per lane. Two lanes finishing at the same moment would otherwise rewrite the
 # same file: read-modify-write loses an entry, and a reader catching a partial write sees [] and
 # falls back to the default cost model. Per-lane files remove the lock entirely.
@@ -2068,6 +2070,33 @@ def stitch_file(stid: str, dl: int = 0):
         safe = re.sub(r'[\\/:*?"<>|\r\n]+', "", raw_title).strip().strip(".") or f"h3-stitch-{stid}"
         headers["Content-Disposition"] = f'attachment; filename="{safe}.mp4"'
     return FileResponse(mp4, media_type="video/mp4", headers=headers)
+
+
+@app.get("/api/casts")
+def list_casts():
+    """Return shared server-side Cast presets stored in /out/casts/*.json."""
+    out = []
+    for p in sorted(CASTS.glob("*.json")):
+        try:
+            data = json.loads(p.read_text())
+            if isinstance(data, list):
+                out.extend(data)
+            elif isinstance(data, dict):
+                out.append(data)
+        except Exception:
+            continue
+    return out
+
+
+@app.get("/api/casts/file/{name}")
+def cast_file(name: str):
+    """Serve a shared Cast reference image from /out/ghost-refs/."""
+    if not re.fullmatch(r"[\w.-]+", name):
+        raise HTTPException(404)
+    p = GHOST_REFS / name
+    if not p.is_file():
+        raise HTTPException(404, "cast reference file not found")
+    return FileResponse(p)
 
 
 @app.post("/api/prompt/validate")
