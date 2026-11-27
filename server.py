@@ -4,7 +4,10 @@
 #
 # v2 adds: live step progress from forward hooks, ETA from measured history, step presets,
 # cancel/retry/delete, cookie sessions, reference duration checks, poster frames, stage timings.
+import base64
+from contextlib import contextmanager
 import fcntl
+from fractions import Fraction
 import gc
 import json
 import logging
@@ -30,6 +33,8 @@ from fastapi.responses import FileResponse, JSONResponse
 VERSION = "2.4"
 KEY = os.environ["H3_API_KEY"].encode()
 JOBS = Path("/out/jobs"); JOBS.mkdir(parents=True, exist_ok=True)
+SERIES = Path("/out/series"); SERIES.mkdir(parents=True, exist_ok=True)
+STITCHES = Path("/out/stitches"); STITCHES.mkdir(parents=True, exist_ok=True)
 # One history file per lane. Two lanes finishing at the same moment would otherwise rewrite the
 # same file: read-modify-write loses an entry, and a reader catching a partial write sees [] and
 # falls back to the default cost model. Per-lane files remove the lock entirely.
@@ -41,6 +46,9 @@ PARTITION = os.environ.get("H3_PARTITION", "both").lower()  # both | base | ref
 LLM_URL = os.environ.get("H3_LLM_URL", "").rstrip("/")      # optional prompt polish backend
 LLM_KEY = os.environ.get("H3_LLM_KEY", "")
 LLM_MODEL = os.environ.get("H3_LLM_MODEL", "qwen3.8-neo-coder")
+VLM_URL = os.environ.get("H3_VLM_URL", "").rstrip("/")      # optional vision model for series last-frame continuity
+VLM_KEY = os.environ.get("H3_VLM_KEY", "")
+VLM_MODEL = os.environ.get("H3_VLM_MODEL", "qwen3.8-27b")
 FFN_CHUNK = int(os.environ.get("H3_FFN_CHUNK", "16384"))    # sequence chunk size for FFN & row-wise norm/AdaLN
 ATTN_CHUNK = int(os.environ.get("H3_ATTN_CHUNK", "32768"))  # query chunk size for self-attention memory control
 _CHUNK_CFG = {"ffn": FFN_CHUNK, "attn": ATTN_CHUNK}
@@ -525,6 +533,7 @@ def engine():
             "aspects": list(ASPECTS), "aspect_dims": ASPECTS,
             "ref_edges": list(REF_EDGES), "ui_roles": UI_ROLES,
             "stages": STAGE, "polish": bool(LLM_URL),
+            "series": True, "vlm": bool(VLM_URL or LLM_URL), "vlm_vision": bool(VLM_URL),
             "lane": LANE, "gpu_index": GPU,
             "ffn_chunk": FFN_CHUNK, "attn_chunk": ATTN_CHUNK,
             "est": {"k": round(k, 6), "p": FRAME_EXP, "c": round(c, 1), "n": len(_hist())}}
@@ -1340,6 +1349,734 @@ def files(jid: str, name: str, dl: int = 0):
         except Exception:
             pass
     return FileResponse(p)
+
+
+# ── Series Automation, VLM Continuity & Selected-Video Stitching ───────────────────────────────
+
+def _read_series(sid: str) -> dict:
+    p = SERIES / f"{sid}.json"
+    if not p.is_file():
+        raise HTTPException(404, "series not found")
+    return json.loads(p.read_text())
+
+
+def _write_series(series: dict):
+    series["updated"] = time.time()
+    p = SERIES / f"{series['id']}.json"
+    tmp = SERIES / f".{series['id']}.{os.getpid()}.tmp"
+    tmp.write_text(json.dumps(series))
+    tmp.replace(p)
+
+
+@contextmanager
+def _series_lock(sid: str, timeout_s: float = 10.0):
+    """Atomic per-series lock across dual GPU lanes using O_CREAT|O_EXCL with 90s stale cleanup."""
+    lk = SERIES / f"{sid}.lock"
+    deadline = time.time() + timeout_s
+    while True:
+        try:
+            fd = os.open(lk, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            with os.fdopen(fd, "w") as f:
+                f.write(LANE)
+            break
+        except FileExistsError:
+            try:
+                if time.time() - lk.stat().st_mtime > 90:
+                    lk.unlink()
+                    continue
+            except Exception:
+                pass
+            if time.time() >= deadline:
+                raise HTTPException(409, "series is busy updating on another lane; retry")
+            time.sleep(0.15)
+    try:
+        yield
+    finally:
+        try:
+            lk.unlink()
+        except Exception:
+            pass
+
+
+def _extract_last_frame(mp4_path: Path, dst_png: Path) -> bool:
+    """Decode the exact final video frame of an MP4 into a lossless PNG using PyAV."""
+    import av
+    last_img = None
+    with av.open(str(mp4_path)) as c:
+        vs = next((s for s in c.streams if s.type == "video"), None)
+        if vs is None:
+            return False
+        if vs.duration and vs.time_base:
+            dur_s = float(vs.duration * vs.time_base)
+            if dur_s > 2.0:
+                try:
+                    c.seek(int(max(0.0, dur_s - 1.5) / float(vs.time_base)), stream=vs, backward=True)
+                    for frame in c.decode(vs):
+                        last_img = frame.to_image()
+                except Exception:
+                    last_img = None
+        if last_img is None:
+            c.seek(0)
+            for frame in c.decode(vs):
+                last_img = frame.to_image()
+    if last_img is None:
+        return False
+    last_img.save(str(dst_png), format="PNG")
+    return True
+
+
+def _stitch_mp4s(job_ids: list[str], dst_mp4: Path) -> dict:
+    """Concatenate ordered finished job output.mp4 files into one continuous MP4 via PyAV."""
+    import av
+    import numpy as np
+    from PIL import Image
+
+    sources: list[Path] = []
+    for jid in job_ids:
+        j = read(jid)
+        if j.get("status") != "done":
+            raise HTTPException(400, f"job #{j.get('num') or jid[:8]} is not finished yet")
+        mp4 = JOBS / jid / (j.get("output") or "output.mp4")
+        if not mp4.is_file():
+            raise HTTPException(404, f"output video missing for job #{j.get('num') or jid[:8]}")
+        sources.append(mp4)
+    if len(sources) < 2:
+        raise HTTPException(400, "select at least 2 finished clips to stitch")
+
+    first_meta = probe_video(sources[0])
+    target_w = int(first_meta.get("width") or 1344)
+    target_h = int(first_meta.get("height") or 768)
+    target_w -= target_w % 2
+    target_h -= target_h % 2
+    target_fps = FPS
+    target_sr = 32000
+
+    out_tmp = dst_mp4.with_suffix(".tmp.mp4")
+    v_pts = 0
+    a_pts = 0
+    try:
+        with av.open(str(out_tmp), mode="w") as out_c:
+            ov = out_c.add_stream("libx264", rate=target_fps)
+            ov.width = target_w
+            ov.height = target_h
+            ov.pix_fmt = "yuv420p"
+            ov.time_base = Fraction(1, target_fps)
+            ov.options = {"crf": "16", "preset": "medium"}
+
+            oa = out_c.add_stream("aac", rate=target_sr)
+            oa.layout = "stereo"
+            oa.time_base = Fraction(1, target_sr)
+
+            for src in sources:
+                clip_v_frames = 0
+                clip_a_samples = 0
+                with av.open(str(src)) as in_c:
+                    ivs = next((s for s in in_c.streams if s.type == "video"), None)
+                    ias = next((s for s in in_c.streams if s.type == "audio"), None)
+                    if ivs is None:
+                        continue
+                    for frame in in_c.decode(ivs):
+                        if frame.width != target_w or frame.height != target_h:
+                            img = frame.to_image()
+                            img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+                            vf = av.VideoFrame.from_image(img).reformat(format="yuv420p")
+                        else:
+                            vf = frame.reformat(format="yuv420p")
+                        vf.pts = v_pts
+                        vf.time_base = ov.time_base
+                        v_pts += 1
+                        clip_v_frames += 1
+                        for pkt in ov.encode(vf):
+                            out_c.mux(pkt)
+
+                    expected_samples = int(round((clip_v_frames / target_fps) * target_sr))
+                    if ias is not None:
+                        in_c.seek(0)
+                        resampler = av.AudioResampler(format="fltp", layout="stereo", rate=target_sr)
+                        for aframe in in_c.decode(ias):
+                            for rf in resampler.resample(aframe):
+                                if rf.samples <= 0:
+                                    continue
+                                rf.pts = a_pts
+                                rf.time_base = oa.time_base
+                                a_pts += rf.samples
+                                clip_a_samples += rf.samples
+                                for pkt in oa.encode(rf):
+                                    out_c.mux(pkt)
+                        for rf in resampler.resample(None):
+                            if rf.samples <= 0:
+                                continue
+                            rf.pts = a_pts
+                            rf.time_base = oa.time_base
+                            a_pts += rf.samples
+                            clip_a_samples += rf.samples
+                            for pkt in oa.encode(rf):
+                                out_c.mux(pkt)
+
+                    pad = expected_samples - clip_a_samples
+                    if pad > 0:
+                        chunk_sz = 1024
+                        while pad > 0:
+                            n = min(pad, chunk_sz)
+                            sil = av.AudioFrame.from_ndarray(
+                                np.zeros((2, n), dtype=np.float32), format="fltp", layout="stereo"
+                            )
+                            sil.sample_rate = target_sr
+                            sil.pts = a_pts
+                            sil.time_base = oa.time_base
+                            a_pts += n
+                            pad -= n
+                            for pkt in oa.encode(sil):
+                                out_c.mux(pkt)
+
+            for pkt in ov.encode(None):
+                out_c.mux(pkt)
+            for pkt in oa.encode(None):
+                out_c.mux(pkt)
+        out_tmp.replace(dst_mp4)
+    except Exception:
+        out_tmp.unlink(missing_ok=True)
+        raise
+    return probe_video(dst_mp4)
+
+
+def _llm_chat(messages: list[dict], *, use_vlm: bool = False, temperature: float = 0.35, max_tokens: int = 2000) -> str:
+    """Call H3_VLM_URL (when use_vlm=True and configured) or H3_LLM_URL, returning stripped text."""
+    url = VLM_URL if (use_vlm and VLM_URL) else LLM_URL or VLM_URL
+    key = VLM_KEY if (use_vlm and VLM_URL) else (LLM_KEY if LLM_URL else VLM_KEY)
+    model = VLM_MODEL if (use_vlm and VLM_URL) else (LLM_MODEL if LLM_URL else VLM_MODEL)
+    if not url:
+        raise HTTPException(501, "No LLM or VLM backend configured (set H3_LLM_URL / H3_VLM_URL)")
+    payload_obj = {
+        "model": model,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "messages": messages,
+    }
+    if not (use_vlm and VLM_URL):
+        payload_obj["chat_template_kwargs"] = {"enable_thinking": False}
+    req = urllib.request.Request(
+        url + "/v1/chat/completions",
+        data=json.dumps(payload_obj).encode(),
+        headers={"Content-Type": "application/json", **({"Authorization": f"Bearer {key}"} if key else {})},
+    )
+    with urllib.request.urlopen(req, timeout=180) as r:
+        data = json.loads(r.read())
+    text = (data["choices"][0]["message"].get("content") or "").strip()
+    text = re.sub(r"<think>[\s\S]*?</think>\s*", "", text).strip()
+    text = re.sub(r"^```[a-zA-Z]*\n([\s\S]*?)\n```$", r"\1", text).strip()
+    return text
+
+
+def _adapt_next_episode_prompt(series: dict, prev_ep: dict, next_ep: dict, last_frame_path: Path | None) -> str:
+    """Use VLM (with last_frame.png) or LLM fallback to write a seamless fl2va continuation prompt."""
+    if not (VLM_URL or LLM_URL):
+        return next_ep.get("prompt") or next_ep.get("beat") or ""
+    frames = int(series["settings"].get("frames") or 362)
+    dur_s = frames / FPS
+    aspect = series["settings"].get("aspect") or "9:16"
+    bible = series.get("bible") or {}
+    director_note = (series.get("director_note") or "").strip()
+    sys_msg = (
+        "You are an expert MiniMax-H3 video director writing a seamless fl2va continuation episode.\n"
+        "You MUST start the output with exact line:\n"
+        "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.\n\n"
+        "Then output the exact 3 sections:\n"
+        "integrated_multimodal_description: [Shot 1] ... [Shot 2] At 00:XX.000, ...\n"
+        "overall_soundscape: ...\n"
+        "non_diegetic_music: ...\n\n"
+        f"Target duration is {dur_s:.2f}s ({frames} frames at {FPS}fps), aspect {aspect}. "
+        "Keep every [Shot N] timestamp strictly inside 00:00.000 to the target duration. "
+        "Look closely at <Picture 1> (the final frame of the previous clip) and ensure [Shot 1] continues "
+        "naturally from that exact lighting, framing, character/creature pose, and environment without jarring cuts."
+    )
+    text_ctx = (
+        f"SERIES TITLE: {series.get('title')}\n"
+        f"SERIES BIBLE:\n"
+        f"- Style & Camera: {bible.get('style', '')}\n"
+        f"- Characters / Entities: {bible.get('characters', '')}\n"
+        f"- Environment & Lighting: {bible.get('environment', '')}\n"
+        f"- Audio & Music Continuity: {bible.get('audio_continuity', '')}\n\n"
+        f"PREVIOUS EPISODE PROMPT (Ep {prev_ep['index'] + 1}):\n{prev_ep.get('prompt', '')[:2500]}\n\n"
+        f"NEXT EPISODE BEAT (Ep {next_ep['index'] + 1}):\n{next_ep.get('beat', '')}\n\n"
+        f"NEXT EPISODE DRAFT PROMPT:\n{next_ep.get('prompt', '')[:2500]}\n"
+        + (f"\nDIRECTOR NOTE:\n{director_note}\n" if director_note else "")
+        + "\nRewrite the NEXT EPISODE prompt so it seamlessly continues from the attached final frame (<Picture 1>)."
+    )
+    use_vlm = bool(VLM_URL and last_frame_path and last_frame_path.is_file())
+    if use_vlm:
+        b64 = base64.b64encode(last_frame_path.read_bytes()).decode("ascii")
+        user_content = [
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+            {"type": "text", "text": text_ctx},
+        ]
+    else:
+        user_content = text_ctx
+    try:
+        raw = _llm_chat([{"role": "system", "content": sys_msg}, {"role": "user", "content": user_content}],
+                        use_vlm=use_vlm, temperature=0.35, max_tokens=1800)
+    except Exception as e:
+        if use_vlm and LLM_URL:
+            print(f"series: VLM failed ({type(e).__name__}: {e}), falling back to LLM_URL", flush=True)
+            raw = _llm_chat([{"role": "system", "content": sys_msg}, {"role": "user", "content": text_ctx}],
+                            use_vlm=False, temperature=0.35, max_tokens=1800)
+        else:
+            raise
+    if "<Picture 1>" not in raw:
+        raw = "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.\n\n" + raw
+    return _repair_polished_prompt(raw, "fl2va")
+
+
+def _enqueue_series_episode(series: dict, ep_idx: int, prev_job_id: str | None = None) -> dict:
+    """Create and queue a job on disk for episode ep_idx using the series' locked settings."""
+    ep = series["episodes"][ep_idx]
+    st = series["settings"]
+    frames = int(st.get("frames") or 362)
+    if frames not in FRAMES:
+        frames = legal_frames(frames)
+    steps = max(4, min(MAX_STEPS, int(st.get("steps") or 36)))
+    aspect = st.get("aspect") or "9:16"
+    audio_mode = st.get("audio_mode") or "peak"
+    ref_short_edge = int(st.get("ref_short_edge") or 2048)
+    pin = (st.get("pin") or "").strip().lower() or None
+    seed_mode = st.get("seed_mode") or "increment"
+    base_seed = int(st.get("base_seed") if st.get("base_seed") is not None else -1)
+    if base_seed < 0:
+        seed = secrets.randbelow(2**31)
+    elif seed_mode == "fixed":
+        seed = base_seed
+    elif seed_mode == "random":
+        seed = secrets.randbelow(2**31)
+    else:
+        seed = base_seed + ep_idx
+
+    prompt = (ep.get("prompt") or ep.get("beat") or "").strip()
+    if not prompt:
+        raise HTTPException(400, f"episode {ep_idx + 1} has no prompt")
+
+    jid = uuid.uuid4().hex
+    d = JOBS / jid
+    d.mkdir()
+    inputs = {"references": []}
+    workflow = "t2va"
+    if prev_job_id:
+        src_lf = JOBS / prev_job_id / "last_frame.png"
+        if not src_lf.is_file():
+            shutil.rmtree(d, ignore_errors=True)
+            raise HTTPException(500, f"missing last_frame.png from previous job {prev_job_id[:8]}")
+        shutil.copyfile(src_lf, d / "image.png")
+        inputs["image"] = "image.png"
+        workflow = "fl2va"
+
+    target_h, target_w = _resolve_canvas(workflow, aspect, [])
+    tag_warnings = parse_prompt_tags(prompt, workflow, [], bool(inputs.get("image")), False)
+    job = {
+        "id": jid, "num": next_number(), "prompt": prompt, "frames": frames, "seed": seed, "steps": steps,
+        "inputs": inputs, "workflow": workflow, "aspect": aspect, "target_height": target_h, "target_width": target_w,
+        "ref_short_edge": ref_short_edge, "tag_warnings": tag_warnings, "keep_video_audio": True, "video_start": 0.0,
+        "status": "queued", "stage": "queued", "step": 0, "total_steps": steps,
+        "created": time.time(), "started": None, "finished": None, "error": None, "output": None,
+        "poster": None, "eta_s": estimate(frames, steps), "timings": {}, "vram_peak_gb": None, "media": {},
+        "audio_mode": audio_mode, "audio": None, "title": f"{series['title']} Ep {ep_idx + 1}",
+        "name": f"{series['title']} Ep {ep_idx + 1}", "folder": f"Series: {series['title']}",
+        "pin": pin, "series_id": series["id"], "episode_index": ep_idx,
+    }
+    write(job)
+    ep["job_id"] = jid
+    ep["status"] = "queued"
+    series["current_index"] = ep_idx
+    return job
+
+
+def _advance_series_for_job(job: dict):
+    """Post-completion hook called by workers after a series job finishes, errors, or cancels."""
+    sid = job.get("series_id")
+    ep_idx = job.get("episode_index")
+    if not sid or ep_idx is None:
+        return
+    try:
+        with _series_lock(sid, timeout_s=30.0):
+            series = _read_series(sid)
+            if ep_idx < 0 or ep_idx >= len(series["episodes"]):
+                return
+            ep = series["episodes"][ep_idx]
+            if job.get("status") != "done":
+                ep["status"] = job.get("status") or "error"
+                series["status"] = job.get("status") or "error"
+                series["error"] = job.get("error")
+                _write_series(series)
+                return
+
+            mp4 = JOBS / job["id"] / (job.get("output") or "output.mp4")
+            lf_path = JOBS / job["id"] / "last_frame.png"
+            if mp4.is_file() and _extract_last_frame(mp4, lf_path):
+                ep["last_frame"] = "last_frame.png"
+            ep["status"] = "done"
+
+            nxt_idx = ep_idx + 1
+            if nxt_idx >= len(series["episodes"]):
+                series["status"] = "done"
+                _write_series(series)
+                return
+
+            nxt = series["episodes"][nxt_idx]
+            if series.get("auto_adapt_prompt", True) and not nxt.get("prompt_locked"):
+                try:
+                    nxt["prompt"] = _adapt_next_episode_prompt(series, ep, nxt, lf_path)
+                    nxt["adapted_with"] = "vlm" if (VLM_URL and lf_path.is_file()) else "llm"
+                except Exception as e:
+                    nxt["adapt_error"] = f"{type(e).__name__}: {e}"
+                    print(f"series {sid[:8]} adapt warning: {e}", flush=True)
+
+            if series.get("mode") == "review" or series.get("status") == "paused":
+                nxt["status"] = "waiting_review"
+                series["status"] = "waiting_review"
+                series["current_index"] = nxt_idx
+            else:
+                _enqueue_series_episode(series, nxt_idx, prev_job_id=job["id"])
+                series["status"] = "running"
+            _write_series(series)
+    except Exception as e:
+        print(f"series {sid[:8]} advance failed: {type(e).__name__}: {e}", flush=True)
+
+
+@app.get("/api/series")
+def list_series():
+    out = []
+    for p in SERIES.glob("*.json"):
+        try:
+            out.append(json.loads(p.read_text()))
+        except Exception:
+            continue
+    out.sort(key=lambda s: s.get("updated") or s.get("created") or 0, reverse=True)
+    return out
+
+
+@app.get("/api/series/{sid}")
+def get_series(sid: str):
+    s = _read_series(sid)
+    for ep in s.get("episodes", []):
+        jid = ep.get("job_id")
+        if jid and (JOBS / jid / "job.json").is_file():
+            try:
+                j = read(jid)
+                ep["job_status"] = j.get("status")
+                ep["job_num"] = j.get("num")
+                ep["poster"] = j.get("poster")
+                ep["output"] = j.get("output")
+                ep["timings"] = j.get("timings")
+            except Exception:
+                pass
+    return s
+
+
+@app.post("/api/series")
+async def create_series(request: Request):
+    b = await request.json()
+    sid = uuid.uuid4().hex[:12]
+    frames = int(b.get("frames") or 362)
+    if frames not in FRAMES:
+        frames = legal_frames(frames)
+    steps = max(4, min(MAX_STEPS, int(b.get("steps") or 36)))
+    aspect = (b.get("aspect") or "9:16").strip().lower()
+    if aspect not in ASPECTS:
+        aspect = "9:16"
+    raw_eps = b.get("episodes") or []
+    if not raw_eps:
+        raise HTTPException(400, "series needs at least 1 episode")
+    episodes = []
+    for idx, e in enumerate(raw_eps):
+        episodes.append({
+            "index": idx,
+            "beat": (e.get("beat") or "").strip(),
+            "prompt": (e.get("prompt") or "").strip(),
+            "prompt_locked": bool(e.get("prompt_locked", False)),
+            "job_id": None,
+            "status": "pending",
+            "last_frame": None,
+        })
+    series = {
+        "id": sid,
+        "title": (b.get("title") or "Untitled Series").strip()[:100],
+        "concept": (b.get("concept") or "").strip(),
+        "status": "draft",
+        "mode": b.get("mode") if b.get("mode") in ("autopilot", "review") else "autopilot",
+        "auto_adapt_prompt": bool(b.get("auto_adapt_prompt", True)),
+        "director_note": (b.get("director_note") or "").strip(),
+        "bible": b.get("bible") or {"style": "", "characters": "", "environment": "", "audio_continuity": ""},
+        "settings": {
+            "frames": frames,
+            "steps": steps,
+            "aspect": aspect,
+            "audio_mode": b.get("audio_mode") if b.get("audio_mode") in ("raw", "peak") else "peak",
+            "ref_short_edge": int(b.get("ref_short_edge") or 2048),
+            "seed_mode": b.get("seed_mode") if b.get("seed_mode") in ("increment", "fixed", "random") else "increment",
+            "base_seed": int(b.get("base_seed") if b.get("base_seed") is not None else -1),
+            "pin": (b.get("pin") or "").strip().lower() or None,
+        },
+        "current_index": 0,
+        "episodes": episodes,
+        "stitched_id": None,
+        "created": time.time(),
+        "updated": time.time(),
+        "error": None,
+    }
+    _write_series(series)
+    return series
+
+
+@app.patch("/api/series/{sid}")
+async def update_series(sid: str, request: Request):
+    b = await request.json()
+    with _series_lock(sid):
+        s = _read_series(sid)
+        for k in ("title", "concept", "mode", "auto_adapt_prompt", "director_note", "bible"):
+            if k in b:
+                s[k] = b[k]
+        if "settings" in b and isinstance(b["settings"], dict):
+            s["settings"].update(b["settings"])
+        if "episodes" in b and isinstance(b["episodes"], list):
+            for idx, patch_ep in enumerate(b["episodes"]):
+                if idx < len(s["episodes"]):
+                    cur = s["episodes"][idx]
+                    if cur.get("status") in ("pending", "waiting_review", "draft"):
+                        for ek in ("beat", "prompt", "prompt_locked"):
+                            if ek in patch_ep:
+                                cur[ek] = patch_ep[ek]
+        _write_series(s)
+        return s
+
+
+@app.delete("/api/series/{sid}")
+def delete_series(sid: str):
+    with _series_lock(sid):
+        p = SERIES / f"{sid}.json"
+        if not p.is_file():
+            raise HTTPException(404, "series not found")
+        p.unlink()
+    return {"deleted": sid}
+
+
+@app.post("/api/series/plan")
+async def plan_series(request: Request):
+    """Stage 1 LLM Series Architect: turn a concept into a Series Bible + per-episode prompts."""
+    b = await request.json()
+    concept = (b.get("concept") or "").strip()
+    if not concept:
+        raise HTTPException(400, "enter a series concept or hook first")
+    n_eps = max(2, min(12, int(b.get("num_episodes") or 3)))
+    frames = int(b.get("frames") or 362)
+    dur_s = frames / FPS
+    aspect = (b.get("aspect") or "9:16").strip()
+    style_hint = (b.get("style_hint") or "").strip()
+    sys_msg = (
+        "You are a viral short-form video series architect for MiniMax-H3.\n"
+        "Return ONLY valid JSON (no markdown fences) with this exact schema:\n"
+        "{\n"
+        '  "title": "short catchy series title (max 6 words)",\n'
+        '  "bible": {\n'
+        '    "style": "camera rig, lens, frame rate, lighting, color grade",\n'
+        '    "characters": "exact appearance, wardrobe, creature details",\n'
+        '    "environment": "location details, props, atmosphere",\n'
+        '    "audio_continuity": "recurring ambient soundscape + non-diegetic music style"\n'
+        "  },\n"
+        '  "episodes": [\n'
+        "    {\n"
+        '      "beat": "concise 1-2 sentence plot beat + ending handoff pose",\n'
+        '      "prompt": "full MiniMax-H3 prompt"\n'
+        "    }\n"
+        "  ]\n"
+        "}\n\n"
+        f"Rules:\n"
+        f"- Generate exactly {n_eps} episodes, each {dur_s:.1f}s ({frames} frames at {FPS}fps), aspect {aspect}.\n"
+        "- Episode 1 prompt starts with: integrated_multimodal_description: [Shot 1] ...\n"
+        "- Episodes 2..N are fl2va continuations from the previous clip's final frame, so each MUST start with:\n"
+        "  For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.\n"
+        "- Every prompt must include integrated_multimodal_description:, overall_soundscape:, and non_diegetic_music:.\n"
+        "- End each episode with a clear visual/camera state so the next episode continues smoothly."
+    )
+    user_msg = f"CONCEPT: {concept}\n" + (f"STYLE HINT: {style_hint}\n" if style_hint else "")
+    raw = _llm_chat([{"role": "system", "content": sys_msg}, {"role": "user", "content": user_msg}],
+                    use_vlm=False, temperature=0.45, max_tokens=3600)
+    m = re.search(r"\{[\s\S]*\}", raw)
+    if not m:
+        raise HTTPException(502, "Series Architect did not return valid JSON")
+    try:
+        plan = json.loads(m.group(0))
+    except Exception as e:
+        raise HTTPException(502, f"Series Architect JSON parse failed: {e}")
+    eps = plan.get("episodes") or []
+    for idx, ep in enumerate(eps):
+        mode = "t2va" if idx == 0 else "fl2va"
+        p = (ep.get("prompt") or "").strip()
+        if mode == "fl2va" and "<Picture 1>" not in p:
+            p = "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.\n\n" + p
+        ep["prompt"] = _repair_polished_prompt(p, mode) if p else ""
+    return plan
+
+
+@app.post("/api/series/{sid}/replan")
+async def replan_series(sid: str, request: Request):
+    """Stage 3 Mid-Series Live Pivot: rewrite pending/waiting episodes with a new Director Note."""
+    b = await request.json()
+    note = (b.get("director_note") or "").strip()
+    if not note:
+        raise HTTPException(400, "enter a director note to re-plan remaining episodes")
+    with _series_lock(sid):
+        s = _read_series(sid)
+        s["director_note"] = note
+        frames = int(s["settings"].get("frames") or 362)
+        dur_s = frames / FPS
+        done_ctx = "\n".join(
+            f"- Ep {e['index'] + 1} ({e['status']}): {e.get('beat', '')}"
+            for e in s["episodes"] if e.get("status") == "done"
+        )
+        pending_eps = [e for e in s["episodes"] if e.get("status") in ("pending", "waiting_review") and not e.get("prompt_locked")]
+        if not pending_eps:
+            raise HTTPException(400, "no unlocked pending episodes left to re-plan")
+        sys_msg = (
+            "You are pivoting an in-progress MiniMax-H3 video series. Return ONLY valid JSON: "
+            '{"episodes": [{"index": 1, "beat": "...", "prompt": "..."}]}\n'
+            f"Target duration {dur_s:.1f}s ({frames} frames). Preserve the Series Bible and fl2va <Picture 1> syntax for episodes > 1."
+        )
+        user_msg = (
+            f"BIBLE: {json.dumps(s.get('bible') or {})}\n"
+            f"COMPLETED:\n{done_ctx or 'None yet'}\n"
+            f"NEW DIRECTOR NOTE: {note}\n"
+            f"RE-PLAN EPISODE INDICES: {[e['index'] for e in pending_eps]}"
+        )
+        raw = _llm_chat([{"role": "system", "content": sys_msg}, {"role": "user", "content": user_msg}],
+                        use_vlm=False, temperature=0.4, max_tokens=3000)
+        m = re.search(r"\{[\s\S]*\}", raw)
+        if not m:
+            raise HTTPException(502, "Re-plan LLM did not return valid JSON")
+        upd = json.loads(m.group(0)).get("episodes") or []
+        by_idx = {int(u["index"]): u for u in upd if "index" in u}
+        for e in pending_eps:
+            u = by_idx.get(e["index"])
+            if not u:
+                continue
+            e["beat"] = (u.get("beat") or e.get("beat") or "").strip()
+            mode = "t2va" if e["index"] == 0 else "fl2va"
+            p = (u.get("prompt") or e.get("prompt") or "").strip()
+            if mode == "fl2va" and "<Picture 1>" not in p:
+                p = "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.\n\n" + p
+            e["prompt"] = _repair_polished_prompt(p, mode)
+        _write_series(s)
+        return s
+
+
+@app.post("/api/series/{sid}/start")
+def start_series(sid: str):
+    with _series_lock(sid):
+        s = _read_series(sid)
+        if s.get("status") == "running":
+            return s
+        nxt = next((e for e in s["episodes"] if e.get("status") in ("pending", "waiting_review")), None)
+        if not nxt:
+            raise HTTPException(400, "no pending episodes to start")
+        idx = nxt["index"]
+        prev_jid = s["episodes"][idx - 1].get("job_id") if idx > 0 else None
+        _enqueue_series_episode(s, idx, prev_job_id=prev_jid)
+        s["status"] = "running"
+        s["error"] = None
+        _write_series(s)
+        return s
+
+
+@app.post("/api/series/{sid}/approve")
+async def approve_series(sid: str, request: Request):
+    b = {}
+    try:
+        b = await request.json()
+    except Exception:
+        pass
+    with _series_lock(sid):
+        s = _read_series(sid)
+        idx = int(b.get("episode_index") if b.get("episode_index") is not None else s.get("current_index", 0))
+        if idx < 0 or idx >= len(s["episodes"]):
+            raise HTTPException(400, "invalid episode index")
+        ep = s["episodes"][idx]
+        if ep.get("status") not in ("waiting_review", "pending"):
+            raise HTTPException(400, f"episode {idx + 1} is {ep.get('status')}, not waiting review")
+        if b.get("prompt"):
+            ep["prompt"] = str(b["prompt"]).strip()
+        if "prompt_locked" in b:
+            ep["prompt_locked"] = bool(b["prompt_locked"])
+        prev_jid = s["episodes"][idx - 1].get("job_id") if idx > 0 else None
+        _enqueue_series_episode(s, idx, prev_job_id=prev_jid)
+        s["status"] = "running"
+        _write_series(s)
+        return s
+
+
+@app.post("/api/series/{sid}/pause")
+def pause_series(sid: str):
+    with _series_lock(sid):
+        s = _read_series(sid)
+        s["status"] = "paused"
+        _write_series(s)
+        return s
+
+
+@app.post("/api/series/{sid}/resume")
+def resume_series(sid: str):
+    with _series_lock(sid):
+        s = _read_series(sid)
+        waiting = next((e for e in s["episodes"] if e.get("status") == "waiting_review"), None)
+        if waiting:
+            idx = waiting["index"]
+            prev_jid = s["episodes"][idx - 1].get("job_id") if idx > 0 else None
+            _enqueue_series_episode(s, idx, prev_job_id=prev_jid)
+        s["status"] = "running"
+        _write_series(s)
+        return s
+
+
+@app.post("/api/stitch")
+async def stitch_jobs(request: Request):
+    """Concatenate any selected finished clips (from a series or the clip bin) into one MP4."""
+    b = await request.json()
+    job_ids = [str(x).strip() for x in (b.get("job_ids") or []) if str(x).strip()]
+    title = (b.get("title") or "H3 Stitched Series").strip()[:100]
+    series_id = (b.get("series_id") or "").strip() or None
+    stid = uuid.uuid4().hex[:12]
+    dst = STITCHES / f"{stid}.mp4"
+    media = _stitch_mp4s(job_ids, dst)
+    meta = {
+        "id": stid,
+        "title": title,
+        "job_ids": job_ids,
+        "series_id": series_id,
+        "media": media,
+        "created": time.time(),
+    }
+    (STITCHES / f"{stid}.json").write_text(json.dumps(meta))
+    if series_id and (SERIES / f"{series_id}.json").is_file():
+        with _series_lock(series_id):
+            s = _read_series(series_id)
+            s["stitched_id"] = stid
+            _write_series(s)
+    return meta
+
+
+@app.get("/api/stitches/{stid}/file")
+def stitch_file(stid: str, dl: int = 0):
+    mp4 = STITCHES / f"{stid}.mp4"
+    meta_p = STITCHES / f"{stid}.json"
+    if not mp4.is_file():
+        raise HTTPException(404, "stitched video not found")
+    headers = {}
+    if dl:
+        raw_title = f"h3-stitch-{stid}"
+        if meta_p.is_file():
+            try:
+                raw_title = json.loads(meta_p.read_text()).get("title") or raw_title
+            except Exception:
+                pass
+        safe = re.sub(r'[\\/:*?"<>|\r\n]+', "", raw_title).strip().strip(".") or f"h3-stitch-{stid}"
+        headers["Content-Disposition"] = f'attachment; filename="{safe}.mp4"'
+    return FileResponse(mp4, media_type="video/mp4", headers=headers)
 
 
 @app.post("/api/prompt/validate")
@@ -2172,6 +2909,7 @@ def main():
             job.update(status="error", stage="error", error=(head + "\n" + tail)[:2000],
                        finished=time.time())
         write(job)
+        _advance_series_for_job(job)
         _release_pipe_vram(pipe)
         try:
             (JOBS / jid / "claim").unlink()

@@ -446,6 +446,18 @@ body{
 .seg button{background:rgba(16,18,24,.72)}
 .seg button[aria-pressed=true]{background:rgba(239,238,233,.92);color:var(--i0)}
 dialog::backdrop{background:rgba(4,6,10,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.series-dlg{width:min(960px,96vw);max-height:92vh}
+.series-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:720px){.series-grid{grid-template-columns:1fr}}
+.series-ep{background:rgba(255,255,255,.04);border:1px solid var(--glass-bd);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.series-ep.is-review{border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.06)}
+.series-ep-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.series-ep-thumb{width:88px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--glass-bd);background:#000}
+.series-badge{display:inline-flex;align-items:center;gap:4px;font:600 10.5px/1 var(--label);letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.08);color:var(--i80)}
+.series-badge.vlm{background:rgba(56,189,248,.16);color:#7dd3fc;border:1px solid rgba(56,189,248,.3)}
+.series-badge.review{background:rgba(245,158,11,.18);color:#fcd34d;border:1px solid rgba(245,158,11,.35)}
+.series-badge.done{background:rgba(34,197,94,.16);color:#86efac}
+.series-badge.running{background:rgba(239,68,68,.18);color:#fca5a5}
 </style>
 </head>
 <body>
@@ -484,6 +496,7 @@ dialog::backdrop{background:rgba(4,6,10,.62);backdrop-filter:blur(8px);-webkit-b
   <span class="it lbl"><span class="lamp onair" id="sAirLamp" hidden></span><span id="sAir">Idle</span></span>
   <span class="it lbl" id="sQueue">Queued 0</span>
   <span class="gpu tc" id="sGpu"></span>
+  <button class="keybtn lbl" id="seriesBtn" type="button">Series</button>
   <button class="keybtn lbl" id="logsBtn" type="button">Logs</button>
   <button class="keybtn lbl" id="keyBtn" type="button">API key</button>
 </header>
@@ -701,7 +714,13 @@ dialog::backdrop{background:rgba(4,6,10,.62);backdrop-filter:blur(8px);-webkit-b
           <select class="sortsel" id="batchFolder" aria-label="Move selected clips to folder" style="flex:1">
             <option value="">Move to folder…</option>
           </select>
+          <button class="btn sm" type="button" id="batchStitch" title="Stitch selected finished clips into one continuous video">Stitch</button>
           <button class="btn sm danger" type="button" id="batchDel"><svg class="ic"><use href="#i-trash"/></svg>Delete</button>
+        </div>
+        <div class="batch-row" id="batchStitchWrap" hidden>
+          <input type="text" id="batchStitchTitle" placeholder="Stitched video title" aria-label="Stitched video title" style="flex:1;padding:5px 8px;font-size:12.5px">
+          <button class="btn sm go" type="button" id="batchStitchGo">Stitch &amp; Save</button>
+          <button class="btn sm" type="button" id="batchStitchCancel">Cancel</button>
         </div>
         <div class="batch-row" id="batchFoldNewWrap" hidden>
           <input type="text" id="batchFoldNew" placeholder="New folder name" aria-label="New folder name for selected clips" style="flex:1;padding:5px 8px;font-size:12.5px">
@@ -901,6 +920,125 @@ dialog::backdrop{background:rgba(4,6,10,.62);backdrop-filter:blur(8px);-webkit-b
       <span class="hint" id="cDlgNote"></span>
       <button class="btn" type="button" id="cDlgCancel">Cancel</button>
       <button class="btn danger" type="button" id="cDlgOk">Confirm</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="seriesDlg">
+  <div class="dlg series-dlg">
+    <div class="top">
+      <h2>Series Studio</h2>
+      <span class="series-badge vlm" id="sVlmBadge" hidden>VLM Vision</span>
+      <select class="sortsel" id="sPicker" aria-label="Saved series" style="max-width:220px"><option value="">+ New series…</option></select>
+      <button class="btn sm" type="button" id="sNewBtn">New</button>
+      <button class="btn icon" type="button" id="sClose" aria-label="Close Series Studio"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="body" style="display:flex;flex-direction:column;gap:14px">
+      <div class="series-grid">
+        <div class="field"><label class="lbl" for="sTitle">Series title</label><input type="text" id="sTitle" placeholder="Abandoned Building Horror POV"></div>
+        <div class="field"><label class="lbl" for="sMode">Execution mode</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="sMode" style="flex:1">
+              <option value="autopilot">Autopilot (auto-queue next clip)</option>
+              <option value="review">Review Gate (pause for prompt check)</option>
+            </select>
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--i80);white-space:nowrap">
+              <input type="checkbox" id="sAutoAdapt" checked> VLM/LLM JIT adapt
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="series-ep">
+        <div class="series-ep-head">
+          <span class="lbl">Stage 1 · AI Storyboarder</span>
+          <span class="hint">Generate a locked Series Bible + episode arc from one concept</span>
+        </div>
+        <div class="series-grid">
+          <div class="field"><label class="lbl" for="sConcept">Series concept / viral hook</label><input type="text" id="sConcept" placeholder="3-part Malaysian abandoned hospital POV: Pontianak in corridor, chase to stairwell, Pocong ambush"></div>
+          <div class="field"><label class="lbl" for="sNumEps">Episodes &amp; style hint</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="sNumEps" min="2" max="12" value="3" style="width:74px" title="Number of episodes">
+              <input type="text" id="sStyleHint" placeholder="Optional style hint (e.g. found-footage, 9:16)" style="flex:1">
+              <button class="btn sm" type="button" id="sPlanBtn"><svg class="ic"><use href="#i-magic"/></svg>Generate Plan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="series-ep">
+        <div class="series-ep-head"><span class="lbl">Locked Series Settings</span><span class="hint">Applied identically to every clip</span></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
+          <div class="field"><label class="lbl" for="sFrames">Length</label><select id="sFrames"></select></div>
+          <div class="field"><label class="lbl" for="sSteps">Steps</label>
+            <select id="sSteps">
+              <option value="8">Draft (8)</option>
+              <option value="12">Standard (12)</option>
+              <option value="25">Fine (25)</option>
+              <option value="36" selected>Ultra (36)</option>
+              <option value="50">Max (50)</option>
+            </select>
+          </div>
+          <div class="field"><label class="lbl" for="sAspect">Aspect</label>
+            <select id="sAspect">
+              <option value="9:16">9:16 (Shorts/Reels)</option>
+              <option value="16:9">16:9 (Widescreen)</option>
+              <option value="1:1">1:1 (Square)</option>
+              <option value="3:4">3:4</option>
+              <option value="4:3">4:3</option>
+            </select>
+          </div>
+          <div class="field"><label class="lbl" for="sAudio">Audio</label>
+            <select id="sAudio">
+              <option value="peak">Peak normalize</option>
+              <option value="raw">Raw</option>
+            </select>
+          </div>
+          <div class="field"><label class="lbl" for="sSeedMode">Seed</label>
+            <select id="sSeedMode">
+              <option value="increment">Increment (+1/ep)</option>
+              <option value="fixed">Fixed seed</option>
+              <option value="random">Random per ep</option>
+            </select>
+          </div>
+        </div>
+        <details style="margin-top:4px">
+          <summary class="lbl" style="cursor:pointer">Series Bible (style, characters, environment, audio continuity)</summary>
+          <div class="series-grid" style="margin-top:8px">
+            <div class="field"><label class="lbl" for="sBibleStyle">Visual &amp; camera style</label><textarea id="sBibleStyle" style="min-height:54px"></textarea></div>
+            <div class="field"><label class="lbl" for="sBibleChars">Characters / entities</label><textarea id="sBibleChars" style="min-height:54px"></textarea></div>
+            <div class="field"><label class="lbl" for="sBibleEnv">Environment &amp; lighting</label><textarea id="sBibleEnv" style="min-height:54px"></textarea></div>
+            <div class="field"><label class="lbl" for="sBibleAudio">Soundscape &amp; music</label><textarea id="sBibleAudio" style="min-height:54px"></textarea></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="series-ep" id="sPivotBar" hidden>
+        <div class="series-ep-head">
+          <span class="lbl">Stage 3 · Live Mid-Series Pivot</span>
+          <input type="text" id="sDirectorNote" placeholder="Director note to redirect upcoming episodes (e.g. basement is flooded)" style="flex:1">
+          <button class="btn sm" type="button" id="sReplanBtn">Re-plan Remaining</button>
+        </div>
+      </div>
+
+      <div id="sEpisodes" style="display:flex;flex-direction:column;gap:10px"></div>
+
+      <div id="sStitchedBox" class="series-ep" hidden>
+        <div class="series-ep-head">
+          <span class="lbl">Stitched Full Video</span>
+          <a class="btn sm go" id="sStitchedDl" href="#" download>Download Stitched MP4</a>
+        </div>
+        <video id="sStitchedVid" controls playsinline style="width:100%;max-height:280px;border-radius:8px;background:#000"></video>
+      </div>
+    </div>
+    <div class="foot" style="flex-wrap:wrap">
+      <span class="hint" id="sMsg" style="margin-right:auto"></span>
+      <button class="btn sm danger" type="button" id="sDelBtn" hidden>Delete</button>
+      <button class="btn sm" type="button" id="sAddEpBtn">+ Episode</button>
+      <button class="btn sm" type="button" id="sStitchBtn" hidden>Stitch Selected</button>
+      <button class="btn sm" type="button" id="sPauseBtn" hidden>Pause</button>
+      <button class="btn sm" type="button" id="sSaveBtn">Save</button>
+      <button class="btn go" type="button" id="sStartBtn">Start Series</button>
     </div>
   </div>
 </dialog>
@@ -4340,6 +4478,362 @@ document.addEventListener('keydown', e => {
     else if ($('#dlg').open) $('#dlg').close();
   }
 });
+
+/* ---------------- Series Studio & Selected-Video Stitching ---------------- */
+let seriesList = [];
+let activeSeriesId = '';
+let draftEpisodes = [
+  { index: 0, beat: '', prompt: '', prompt_locked: false, status: 'pending' },
+  { index: 1, beat: '', prompt: '', prompt_locked: false, status: 'pending' },
+  { index: 2, beat: '', prompt: '', prompt_locked: false, status: 'pending' }
+];
+let stitchCheckedEps = new Set();
+
+function syncSeriesFrameOpts() {
+  const sf = $('#sFrames');
+  const src = $('#frames');
+  if (!sf || !src || !src.options.length) return;
+  const cur = sf.value || '362';
+  sf.innerHTML = src.innerHTML;
+  sf.value = sf.querySelector(`option[value="${cur}"]`) ? cur : (sf.querySelector('option[value="362"]') ? '362' : sf.options[0].value);
+}
+
+function activeSeriesObj() {
+  return seriesList.find(s => s.id === activeSeriesId) || null;
+}
+
+function stitchFileUrl(stid, dl = false) {
+  return `/api/stitches/${stid}/file` + (dl ? '?dl=1' : '') + (COOKIE || !KEY ? '' : (dl ? '&' : '?') + 'key=' + encodeURIComponent(KEY));
+}
+
+function renderSeriesEpisodes() {
+  const s = activeSeriesObj();
+  const eps = s ? (s.episodes || []) : draftEpisodes;
+  const box = $('#sEpisodes');
+  box.innerHTML = '';
+  let doneCount = 0;
+  eps.forEach((ep, idx) => {
+    if (ep.status === 'done' && ep.job_id) doneCount++;
+    const st = ep.status || 'pending';
+    const isReview = st === 'waiting_review';
+    const editable = !s || st === 'pending' || st === 'waiting_review' || st === 'draft';
+    const card = document.createElement('div');
+    card.className = `series-ep${isReview ? ' is-review' : ''}`;
+    const thumbSrc = (ep.job_id && ep.last_frame) ? url(ep.job_id, ep.last_frame) : ((ep.job_id && ep.poster) ? url(ep.job_id, ep.poster) : '');
+    const badgeCls = st === 'done' ? 'done' : st === 'running' ? 'running' : isReview ? 'review' : '';
+    const adaptBadge = ep.adapted_with ? `<span class="series-badge vlm">${esc(ep.adapted_with.toUpperCase())}</span>` : '';
+    const epChk = (st === 'done' && ep.job_id)
+      ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--i80)"><input type="checkbox" class="s-ep-chk" data-jid="${esc(ep.job_id)}" ${stitchCheckedEps.has(ep.job_id) ? 'checked' : ''}> Stitch</label>`
+      : '';
+    card.innerHTML = `
+      <div class="series-ep-head">
+        <span class="lbl">Episode ${idx + 1}</span>
+        <span class="series-badge ${badgeCls}">${esc(st.replace('_', ' '))}</span>
+        ${ep.job_num ? `<span class="tc" style="font-size:12px;color:var(--i70)">#${ep.job_num}</span>` : ''}
+        ${adaptBadge}
+        ${epChk}
+        <label style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--i70)">
+          <input type="checkbox" class="s-ep-lock" ${ep.prompt_locked ? 'checked' : ''} ${editable ? '' : 'disabled'}> Lock prompt
+        </label>
+        ${isReview ? `<button class="btn sm go s-ep-approve" type="button">Approve &amp; Queue Next</button>` : ''}
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        ${thumbSrc ? `<img class="series-ep-thumb" src="${thumbSrc}" alt="Ep ${idx + 1} frame">` : ''}
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-width:0">
+          <input type="text" class="s-ep-beat" placeholder="Story beat / cliffhanger (e.g. runs to stairwell, hears footsteps)" value="${esc(ep.beat || '')}" ${editable ? '' : 'disabled'}>
+          <textarea class="s-ep-prompt" style="min-height:74px;font-size:12.5px" placeholder="${idx === 0 ? 'Episode 1 prompt (t2va)...' : 'Episode ' + (idx + 1) + ' draft prompt (or let VLM JIT-adapt from last frame)...'}" ${editable ? '' : 'disabled'}>${esc(ep.prompt || '')}</textarea>
+        </div>
+      </div>`;
+    const beatEl = card.querySelector('.s-ep-beat');
+    const prEl = card.querySelector('.s-ep-prompt');
+    const lkEl = card.querySelector('.s-ep-lock');
+    beatEl.oninput = () => { ep.beat = beatEl.value };
+    prEl.oninput = () => { ep.prompt = prEl.value };
+    lkEl.onchange = () => { ep.prompt_locked = lkEl.checked };
+    const chkEl = card.querySelector('.s-ep-chk');
+    if (chkEl) chkEl.onchange = () => { if (chkEl.checked) stitchCheckedEps.add(ep.job_id); else stitchCheckedEps.delete(ep.job_id); };
+    const appEl = card.querySelector('.s-ep-approve');
+    if (appEl && s) appEl.onclick = async () => {
+      appEl.disabled = true; $('#sMsg').textContent = 'Queuing next episode…';
+      try {
+        const upd = await api(`/api/series/${s.id}/approve`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ episode_index: idx, prompt: prEl.value, prompt_locked: lkEl.checked })
+        });
+        await loadSeriesList(upd.id);
+        poll();
+      } catch (e) { $('#sMsg').textContent = 'Approve failed: ' + e.message; }
+      appEl.disabled = false;
+    };
+    box.appendChild(card);
+  });
+  $('#sStitchBtn').hidden = doneCount < 2;
+}
+
+function loadSeriesIntoForm(s) {
+  syncSeriesFrameOpts();
+  $('#sVlmBadge').hidden = !(engine && engine.vlm_vision);
+  if (!s) {
+    activeSeriesId = '';
+    $('#sTitle').value = '';
+    $('#sConcept').value = '';
+    $('#sMode').value = 'autopilot';
+    $('#sAutoAdapt').checked = true;
+    $('#sBibleStyle').value = '';
+    $('#sBibleChars').value = '';
+    $('#sBibleEnv').value = '';
+    $('#sBibleAudio').value = '';
+    $('#sPivotBar').hidden = true;
+    $('#sDelBtn').hidden = true;
+    $('#sPauseBtn').hidden = true;
+    $('#sStitchedBox').hidden = true;
+    $('#sStartBtn').textContent = 'Start Series';
+    renderSeriesEpisodes();
+    return;
+  }
+  activeSeriesId = s.id;
+  $('#sTitle').value = s.title || '';
+  $('#sConcept').value = s.concept || '';
+  $('#sMode').value = s.mode || 'autopilot';
+  $('#sAutoAdapt').checked = s.auto_adapt_prompt !== false;
+  const st = s.settings || {};
+  if (st.frames && $('#sFrames').querySelector(`option[value="${st.frames}"]`)) $('#sFrames').value = String(st.frames);
+  if (st.steps) $('#sSteps').value = String(st.steps);
+  if (st.aspect) $('#sAspect').value = st.aspect;
+  if (st.audio_mode) $('#sAudio').value = st.audio_mode;
+  if (st.seed_mode) $('#sSeedMode').value = st.seed_mode;
+  const bib = s.bible || {};
+  $('#sBibleStyle').value = bib.style || '';
+  $('#sBibleChars').value = bib.characters || '';
+  $('#sBibleEnv').value = bib.environment || '';
+  $('#sBibleAudio').value = bib.audio_continuity || '';
+  $('#sDirectorNote').value = s.director_note || '';
+  $('#sPivotBar').hidden = false;
+  $('#sDelBtn').hidden = false;
+  $('#sPauseBtn').hidden = !['running', 'paused', 'waiting_review'].includes(s.status);
+  $('#sPauseBtn').textContent = s.status === 'paused' ? 'Resume' : 'Pause';
+  $('#sStartBtn').disabled = s.status === 'running';
+  $('#sStartBtn').textContent = s.status === 'running' ? 'Running…' : s.status === 'done' ? 'Completed' : 'Start Series';
+  stitchCheckedEps = new Set((s.episodes || []).filter(e => e.status === 'done' && e.job_id).map(e => e.job_id));
+  if (s.stitched_id) {
+    $('#sStitchedBox').hidden = false;
+    $('#sStitchedVid').src = stitchFileUrl(s.stitched_id, false);
+    $('#sStitchedDl').href = stitchFileUrl(s.stitched_id, true);
+    const safeTitle = (s.title || 'H3 Stitched Series').replace(/[\\/:*?"<>|]+/g, ' ').trim();
+    $('#sStitchedDl').setAttribute('download', `${safeTitle}.mp4`);
+  } else {
+    $('#sStitchedBox').hidden = true;
+  }
+  renderSeriesEpisodes();
+}
+
+async function loadSeriesList(selectId = null) {
+  try {
+    seriesList = await api('/api/series');
+  } catch { seriesList = []; }
+  const pk = $('#sPicker');
+  const prev = selectId !== null ? selectId : activeSeriesId;
+  pk.innerHTML = '<option value="">+ New series…</option>' + seriesList.map(s =>
+    `<option value="${esc(s.id)}">${esc(s.title)} (${esc(s.status)})</option>`
+  ).join('');
+  if (prev && seriesList.some(s => s.id === prev)) {
+    pk.value = prev;
+    try {
+      const full = await api(`/api/series/${prev}`);
+      const i = seriesList.findIndex(x => x.id === prev);
+      if (i >= 0) seriesList[i] = full;
+      loadSeriesIntoForm(full);
+    } catch { loadSeriesIntoForm(activeSeriesObj()); }
+  } else {
+    pk.value = '';
+    loadSeriesIntoForm(null);
+  }
+  const hasReview = seriesList.some(s => s.status === 'waiting_review');
+  const hasRun = seriesList.some(s => s.status === 'running');
+  $('#seriesBtn').textContent = hasReview ? 'Series · Review' : hasRun ? 'Series · Running' : 'Series';
+}
+
+function collectSeriesPayload() {
+  const s = activeSeriesObj();
+  const eps = (s ? s.episodes : draftEpisodes).map((e, idx) => ({
+    index: idx, beat: e.beat || '', prompt: e.prompt || '', prompt_locked: !!e.prompt_locked
+  }));
+  return {
+    title: ($('#sTitle').value || 'Untitled Series').trim(),
+    concept: ($('#sConcept').value || '').trim(),
+    mode: $('#sMode').value,
+    auto_adapt_prompt: $('#sAutoAdapt').checked,
+    director_note: ($('#sDirectorNote').value || '').trim(),
+    frames: +$('#sFrames').value || 362,
+    steps: +$('#sSteps').value || 36,
+    aspect: $('#sAspect').value || '9:16',
+    audio_mode: $('#sAudio').value || 'peak',
+    seed_mode: $('#sSeedMode').value || 'increment',
+    bible: {
+      style: $('#sBibleStyle').value.trim(),
+      characters: $('#sBibleChars').value.trim(),
+      environment: $('#sBibleEnv').value.trim(),
+      audio_continuity: $('#sBibleAudio').value.trim()
+    },
+    settings: {
+      frames: +$('#sFrames').value || 362,
+      steps: +$('#sSteps').value || 36,
+      aspect: $('#sAspect').value || '9:16',
+      audio_mode: $('#sAudio').value || 'peak',
+      seed_mode: $('#sSeedMode').value || 'increment'
+    },
+    episodes: eps
+  };
+}
+
+$('#seriesBtn').onclick = async () => { syncSeriesFrameOpts(); await loadSeriesList(); $('#seriesDlg').showModal(); };
+$('#sClose').onclick = () => $('#seriesDlg').close();
+$('#sPicker').onchange = async () => { await loadSeriesList($('#sPicker').value); };
+$('#sNewBtn').onclick = () => {
+  draftEpisodes = [0, 1, 2].map(i => ({ index: i, beat: '', prompt: '', prompt_locked: false, status: 'pending' }));
+  loadSeriesIntoForm(null);
+  $('#sPicker').value = '';
+};
+$('#sAddEpBtn').onclick = () => {
+  const s = activeSeriesObj();
+  const list = s ? s.episodes : draftEpisodes;
+  list.push({ index: list.length, beat: '', prompt: '', prompt_locked: false, status: 'pending' });
+  renderSeriesEpisodes();
+};
+$('#sPlanBtn').onclick = async () => {
+  const concept = $('#sConcept').value.trim();
+  if (!concept) { $('#sMsg').textContent = 'Enter a series concept first.'; return; }
+  $('#sPlanBtn').disabled = true; $('#sMsg').textContent = 'AI Storyboarder planning series…';
+  try {
+    const plan = await api('/api/series/plan', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        concept, num_episodes: +$('#sNumEps').value || 3,
+        frames: +$('#sFrames').value || 362, aspect: $('#sAspect').value || '9:16',
+        style_hint: $('#sStyleHint').value.trim()
+      })
+    });
+    if (plan.title && !$('#sTitle').value.trim()) $('#sTitle').value = plan.title;
+    const bib = plan.bible || {};
+    $('#sBibleStyle').value = bib.style || '';
+    $('#sBibleChars').value = bib.characters || '';
+    $('#sBibleEnv').value = bib.environment || '';
+    $('#sBibleAudio').value = bib.audio_continuity || '';
+    const mapped = (plan.episodes || []).map((e, i) => ({
+      index: i, beat: e.beat || '', prompt: e.prompt || '', prompt_locked: false, status: 'pending'
+    }));
+    const s = activeSeriesObj();
+    if (s) s.episodes = mapped; else draftEpisodes = mapped;
+    renderSeriesEpisodes();
+    $('#sMsg').textContent = `Planned ${mapped.length} episodes.`;
+  } catch (e) { $('#sMsg').textContent = 'Plan failed: ' + e.message; }
+  $('#sPlanBtn').disabled = false;
+};
+$('#sSaveBtn').onclick = async () => {
+  $('#sSaveBtn').disabled = true; $('#sMsg').textContent = 'Saving series…';
+  try {
+    const payload = collectSeriesPayload();
+    const s = activeSeriesId
+      ? await api(`/api/series/${activeSeriesId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      : await api('/api/series', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    await loadSeriesList(s.id);
+    $('#sMsg').textContent = 'Series saved.';
+  } catch (e) { $('#sMsg').textContent = 'Save failed: ' + e.message; }
+  $('#sSaveBtn').disabled = false;
+};
+$('#sStartBtn').onclick = async () => {
+  $('#sStartBtn').disabled = true; $('#sMsg').textContent = 'Starting series…';
+  try {
+    const payload = collectSeriesPayload();
+    const s = activeSeriesId
+      ? await api(`/api/series/${activeSeriesId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      : await api('/api/series', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const started = await api(`/api/series/${s.id}/start`, { method: 'POST' });
+    await loadSeriesList(started.id);
+    poll();
+    $('#sMsg').textContent = 'Episode queued!';
+  } catch (e) { $('#sMsg').textContent = 'Start failed: ' + e.message; }
+  $('#sStartBtn').disabled = false;
+};
+$('#sPauseBtn').onclick = async () => {
+  const s = activeSeriesObj(); if (!s) return;
+  const act = s.status === 'paused' ? 'resume' : 'pause';
+  await api(`/api/series/${s.id}/${act}`, { method: 'POST' });
+  await loadSeriesList(s.id);
+};
+$('#sReplanBtn').onclick = async () => {
+  const s = activeSeriesObj(); if (!s) return;
+  const note = $('#sDirectorNote').value.trim();
+  if (!note) { $('#sMsg').textContent = 'Enter a Director Note first.'; return; }
+  $('#sReplanBtn').disabled = true; $('#sMsg').textContent = 'Re-planning remaining episodes…';
+  try {
+    await api(`/api/series/${s.id}/replan`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ director_note: note })
+    });
+    await loadSeriesList(s.id);
+    $('#sMsg').textContent = 'Remaining episodes updated.';
+  } catch (e) { $('#sMsg').textContent = 'Re-plan failed: ' + e.message; }
+  $('#sReplanBtn').disabled = false;
+};
+$('#sDelBtn').onclick = async () => {
+  const s = activeSeriesObj(); if (!s) return;
+  if (!await askConfirm({ title: 'Delete series', body: `Delete "${s.title}"? Rendered clips stay in the clip bin.`, okText: 'Delete' })) return;
+  await api(`/api/series/${s.id}`, { method: 'DELETE' });
+  await loadSeriesList('');
+};
+$('#sStitchBtn').onclick = async () => {
+  const s = activeSeriesObj(); if (!s) return;
+  const orderedIds = (s.episodes || []).filter(e => e.status === 'done' && e.job_id && stitchCheckedEps.has(e.job_id)).map(e => e.job_id);
+  if (orderedIds.length < 2) { $('#sMsg').textContent = 'Check at least 2 finished episodes to stitch.'; return; }
+  $('#sStitchBtn').disabled = true; $('#sMsg').textContent = `Stitching ${orderedIds.length} episodes…`;
+  try {
+    const meta = await api('/api/stitch', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_ids: orderedIds, title: s.title || 'H3 Stitched Series', series_id: s.id })
+    });
+    await loadSeriesList(s.id);
+    $('#sMsg').textContent = `Stitched ${orderedIds.length} clips (${meta.media?.duration || '?'}s).`;
+  } catch (e) { $('#sMsg').textContent = 'Stitch failed: ' + e.message; }
+  $('#sStitchBtn').disabled = false;
+};
+
+/* ---------------- Clip Bin Multi-Select Stitch ---------------- */
+$('#batchStitch').onclick = () => {
+  const doneSel = jobs.filter(j => selectedIds.has(j.id) && j.status === 'done');
+  if (doneSel.length < 2) { msg('Select at least 2 finished clips to stitch.', true); return; }
+  $('#batchStitchTitle').value = doneSel[0].folder ? doneSel[0].folder.replace(/^Series:\s*/i, '') : 'H3 Stitched Clips';
+  $('#batchStitchWrap').hidden = false;
+  $('#batchStitchTitle').focus();
+};
+$('#batchStitchCancel').onclick = () => { $('#batchStitchWrap').hidden = true; };
+$('#batchStitchGo').onclick = async () => {
+  const doneSel = jobs
+    .filter(j => selectedIds.has(j.id) && j.status === 'done')
+    .sort((a, b) => (a.created || 0) - (b.created || 0));
+  if (doneSel.length < 2) { msg('Select at least 2 finished clips.', true); return; }
+  const title = ($('#batchStitchTitle').value || 'H3 Stitched Clips').trim();
+  $('#batchStitchGo').disabled = true; msg(`Stitching ${doneSel.length} selected clips…`);
+  try {
+    const meta = await api('/api/stitch', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_ids: doneSel.map(j => j.id), title })
+    });
+    $('#batchStitchWrap').hidden = true;
+    const a = document.createElement('a');
+    a.href = stitchFileUrl(meta.id, true);
+    a.download = `${title.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'H3 Stitched Clips'}.mp4`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    msg(`Stitched ${doneSel.length} clips (${meta.media?.duration || '?'}s) — downloading.`);
+  } catch (e) {
+    msg('Stitch failed: ' + e.message, true);
+  }
+  $('#batchStitchGo').disabled = false;
+};
+
+setInterval(() => { if ($('#seriesDlg').open && activeSeriesId) loadSeriesList(activeSeriesId); }, 5000);
 
 /* boot */
 boot();
