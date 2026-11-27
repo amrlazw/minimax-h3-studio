@@ -988,7 +988,12 @@ dialog::backdrop{background:rgba(4,6,10,.62);backdrop-filter:blur(8px);-webkit-b
       <div class="series-ep">
         <div class="series-ep-head">
           <span class="lbl">Stage 1 · AI Storyboarder</span>
-          <span class="hint">Generate a locked Series Bible + episode arc from one concept</span>
+          <span class="hint">Pick a commercial/use-case starter or enter a concept to generate a locked Series Bible + episode arc</span>
+        </div>
+        <div class="field">
+          <label class="lbl" for="sStarter">Commercial / Use-case starter <span class="hint">(optional — pre-fills concept, aspect, style &amp; Ep 1)</span></label>
+          <select id="sStarter"><option value="">Custom / blank</option></select>
+          <div class="hint" id="sStarterHint"></div>
         </div>
         <div class="series-grid">
           <div class="field"><label class="lbl" for="sConcept">Series concept / viral hook</label><input type="text" id="sConcept" placeholder="3-part Malaysian abandoned hospital POV: Pontianak in corridor, chase to stairwell, Pocong ambush"></div>
@@ -4550,7 +4555,36 @@ function syncSeriesFrameOpts() {
   const cur = sf.value || '362';
   sf.innerHTML = src.innerHTML;
   sf.value = sf.querySelector(`option[value="${cur}"]`) ? cur : (sf.querySelector('option[value="362"]') ? '362' : sf.options[0].value);
+  const ss = $('#sStarter');
+  const bt = $('#bTemplate');
+  if (ss && bt && ss.options.length <= 1) ss.innerHTML = bt.innerHTML;
 }
+
+function applySeriesStarter(key) {
+  const p = COMMERCIAL_PRESETS[key];
+  const hintEl = $('#sStarterHint');
+  if (!p) { if (hintEl) hintEl.textContent = ''; return; }
+  const lbl = $('#sStarter')?.selectedOptions?.[0]?.textContent?.replace(/^[\d.]+\s*·\s*/, '').replace(/\s*\([^)]*\)\s*$/, '').trim() || '';
+  if (!$('#sTitle').value.trim() && lbl) $('#sTitle').value = lbl;
+  const shotsSummary = (p.shots || []).map(s => s.text).filter(Boolean).join(' ');
+  $('#sConcept').value = `${p.scene || lbl}. ${shotsSummary}`.trim();
+  $('#sStyleHint').value = `${p.style || ''}${p.aspect ? ' (' + p.aspect + ')' : ''}`.trim();
+  if (p.aspect && $('#sAspect')?.querySelector(`option[value="${p.aspect}"]`)) $('#sAspect').value = p.aspect;
+  if (!$('#sBibleStyle').value.trim()) $('#sBibleStyle').value = p.style || '';
+  if (!$('#sBibleAudio').value.trim()) $('#sBibleAudio').value = [p.sound ? `Sound: ${p.sound}` : '', p.music ? `Music: ${p.music}` : ''].filter(Boolean).join(' | ');
+  const ep1 = activeSeriesObj()?.episodes?.[0] || draftEpisodes[0];
+  if (ep1 && !ep1.prompt) {
+    const desc = [p.style, p.scene, ...(p.shots || []).map((s, i) => `[Shot ${i + 1}] ${s.text}`)].filter(Boolean).join(' ');
+    ep1.beat = p.scene || lbl;
+    ep1.prompt = `integrated_multimodal_description: ${desc}` +
+      (p.sound ? `\n\noverall_soundscape: ${p.sound}` : '') +
+      (p.music ? `\n\nnon_diegetic_music: ${p.music}` : '');
+    renderSeriesEpisodes();
+  }
+  if (hintEl) hintEl.textContent = p.hint || '';
+  $('#sMsg').textContent = 'Starter loaded — click "Generate Plan" to expand into a full multi-episode series.';
+}
+if ($('#sStarter')) $('#sStarter').onchange = e => applySeriesStarter(e.target.value);
 
 function activeSeriesObj() {
   return seriesList.find(s => s.id === activeSeriesId) || null;
