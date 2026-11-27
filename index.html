@@ -1741,12 +1741,41 @@ function bindRefsIntoPrompt() {
   msg('Bound subject_definitions & retention_analysis from current references.');
 }
 
+function expandCastTagsInPrompt(text, tagged) {
+  let out = String(text || '');
+  const byCast = new Map();
+  (tagged || []).forEach(t => {
+    const cn = t.r?.castName;
+    if (!cn || !t.tag) return;
+    if (!byCast.has(cn)) byCast.set(cn, []);
+    byCast.get(cn).push(t.tag);
+  });
+  for (const [cn, tags] of byCast.entries()) {
+    const joined = tags.length === 1 ? tags[0] : (tags.slice(0, -1).join(', ') + ', and ' + tags[tags.length - 1]);
+    const re = new RegExp('<' + cn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '>', 'gi');
+    out = out.replace(re, joined);
+  }
+  return out;
+}
+
 function updateTagBar() {
   const bar = $('#tagBar');
   if (!bar) return;
   const diag = analyzePromptLinks();
   const promptText = $('#prompt').value || '';
   const liveChips = [];
+  const castGroups = new Map();
+  diag.tagged.forEach(t => {
+    if (t.r?.castName && t.tag) {
+      if (!castGroups.has(t.r.castName)) castGroups.set(t.r.castName, []);
+      castGroups.get(t.r.castName).push(t.tag);
+    }
+  });
+  for (const [cn, tags] of castGroups.entries()) {
+    const alias = `<${cn}>`;
+    const linked = new RegExp('<' + cn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '>', 'i').test(promptText);
+    liveChips.push(`<button type="button" class="tchip ${linked ? 'is-linked' : 'is-bind'}" data-ins="${esc(alias)}" title="Expands to ${esc(tags.join(', '))} on submit">${esc(alias)} (${tags.length})</button>`);
+  }
   for (const tag of diag.validTags) {
     const linked = diag.promptTagSet.has(tag);
     const cls = linked ? 'is-linked' : 'is-unlinked';
@@ -3951,7 +3980,7 @@ async function applyCastPreset(id) {
     const obj = {
       id: ++refUid, file: f, kind: meta.kind, mode: meta.mode, keep_video_audio: meta.keep_video_audio,
       role: meta.role, subjectGroup: meta.subjectGroup, start: meta.start || 0, end: meta.end ?? null,
-      targetFps: meta.targetFps ?? null, probing: false, thumbUrl
+      targetFps: meta.targetFps ?? null, probing: false, thumbUrl, castName: c.name
     };
     refFiles.push(obj);
     probeLocalRef(obj);
@@ -4468,6 +4497,7 @@ $('#compose').onsubmit = async e => {
   fd.delete('references');
   fd.delete('roles');
   const tagged = resolveRefTags(refFiles);
+  fd.set('prompt', expandCastTagsInPrompt($('#prompt').value, tagged));
   const refMeta = tagged.map(t => {
     const r = t.r;
     return {
@@ -4714,6 +4744,11 @@ async function renderSeriesEpisodes() {
         ${editable ? `<button type="button" class="s-ep-ref-del" data-ridx="${rIdx}" style="background:none;border:0;padding:0 2px;color:var(--i60);cursor:pointer">×</button>` : ''}
       </span>`;
     }).join('');
+    const castAliasChips = Object.entries(ep.cast_aliases || {}).map(([cn, paths]) => {
+      const idxs = (paths || []).map(p => refs.indexOf(p)).filter(i => i >= 0).map(i => `<Picture ${idx === 0 ? i + 1 : i + 2}>`);
+      if (!idxs.length) return '';
+      return `<button type="button" class="tchip is-bind s-ep-ins-cast" data-alias="&lt;${esc(cn)}&gt;" title="Insert &lt;${esc(cn)}&gt; (expands to ${esc(idxs.join(', '))})">&lt;${esc(cn)}&gt; (${idxs.length})</button>`;
+    }).join('');
     card.innerHTML = `
       <div class="series-ep-head">
         <span class="lbl">Episode ${idx + 1}</span>
@@ -4742,7 +4777,7 @@ async function renderSeriesEpisodes() {
             <button type="button" class="btn sm s-ep-polish" title="Polish episode prompt with LLM">Polish</button>
             <button type="button" class="btn sm s-ep-repair" title="Repair H3 tags &amp; sections">Repair</button>
           </div>` : ''}
-          ${refs.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${refsHtml}</div>` : ''}
+          ${(refs.length || castAliasChips) ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${castAliasChips}${refsHtml}</div>` : ''}
         </div>
       </div>`;
     const beatEl = card.querySelector('.s-ep-beat');
@@ -4757,18 +4792,27 @@ async function renderSeriesEpisodes() {
       castSel.value = '';
       if (!c) return;
       ep.ref_images = ep.ref_images || [];
+      ep.cast_aliases = ep.cast_aliases || {};
+      const addedPaths = [];
       $('#sMsg').textContent = `Attaching Cast "${c.name}"…`;
       for (const it of (c.items || [])) {
         if (it.kind && it.kind !== 'image') continue;
         const srv = castItemToServerPath(it);
-        if (srv) { if (!ep.ref_images.includes(srv)) ep.ref_images.push(srv); }
-        else if (it.buf) {
+        if (srv) {
+          if (!ep.ref_images.includes(srv)) ep.ref_images.push(srv);
+          addedPaths.push(srv);
+        } else if (it.buf) {
           const f = new File([it.buf], it.name || 'cast.png', { type: it.type || 'image/png' });
-          try { ep.ref_images.push(await uploadSeriesRefFile(f)); } catch (e) { $('#sMsg').textContent = 'Cast upload failed: ' + e.message; }
+          try {
+            const upPath = await uploadSeriesRefFile(f);
+            ep.ref_images.push(upPath);
+            addedPaths.push(upPath);
+          } catch (e) { $('#sMsg').textContent = 'Cast upload failed: ' + e.message; }
         }
       }
+      if (addedPaths.length) ep.cast_aliases[c.name] = addedPaths;
       renderSeriesEpisodes();
-      $('#sMsg').textContent = `Attached Cast "${c.name}" to Episode ${idx + 1}.`;
+      $('#sMsg').textContent = `Attached Cast "${c.name}" — use <${c.name}> in Episode ${idx + 1}'s prompt.`;
     };
     const fileInp = card.querySelector('.s-ep-file');
     if (fileInp) fileInp.onchange = async () => {
@@ -4798,6 +4842,7 @@ async function renderSeriesEpisodes() {
       ep.ref_images.splice(+b.dataset.ridx, 1);
       renderSeriesEpisodes();
     });
+    card.querySelectorAll('.s-ep-ins-cast').forEach(b => b.onclick = () => insertAtCursor(prEl, b.dataset.alias));
     const polEl = card.querySelector('.s-ep-polish');
     if (polEl) polEl.onclick = async () => {
       if (!prEl.value.trim()) return;
@@ -4931,10 +4976,20 @@ async function loadSeriesList(selectId = null) {
 
 function collectSeriesPayload() {
   const s = activeSeriesObj();
-  const eps = (s ? s.episodes : draftEpisodes).map((e, idx) => ({
-    index: idx, beat: e.beat || '', prompt: e.prompt || '', prompt_locked: !!e.prompt_locked,
-    ref_images: e.ref_images || []
-  }));
+  const eps = (s ? s.episodes : draftEpisodes).map((e, idx) => {
+    const refs = e.ref_images || [];
+    let pr = e.prompt || '';
+    for (const [cn, paths] of Object.entries(e.cast_aliases || {})) {
+      const tags = (paths || []).map(p => refs.indexOf(p)).filter(i => i >= 0).map(i => `<Picture ${idx === 0 ? i + 1 : i + 2}>`);
+      if (!tags.length) continue;
+      const joined = tags.length === 1 ? tags[0] : (tags.slice(0, -1).join(', ') + ', and ' + tags[tags.length - 1]);
+      pr = pr.replace(new RegExp('<' + cn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '>', 'gi'), joined);
+    }
+    return {
+      index: idx, beat: e.beat || '', prompt: pr, prompt_locked: !!e.prompt_locked,
+      ref_images: refs
+    };
+  });
   return {
     title: ($('#sTitle').value || 'Untitled Series').trim(),
     concept: ($('#sConcept').value || '').trim(),
