@@ -4064,7 +4064,8 @@ function wfFilterBar() {
 
 function folderBar() {
   const el = $('#folders');
-  const names = [...new Set(jobs.map(j => j.folder).filter(Boolean))].sort();
+  const names = [...new Set(jobs.map(j => j.folder).filter(f => f && !String(f).startsWith('Series: ')))].sort();
+  if (foldFilter && String(foldFilter).startsWith('Series: ')) { foldFilter = ''; LS.set('folder', ''); }
   const unfiled = jobs.filter(j => !j.folder).length;
   const orphan = foldFilter && foldFilter !== '__none__' && !names.includes(foldFilter);
   const chip = (val, label, n) => `<button type="button" class="fchip${val !== '' ? ' drop' : ''}" data-folder="${esc(val)}" aria-pressed="${foldFilter === val}">${esc(label)}<small>${n}</small></button>`;
